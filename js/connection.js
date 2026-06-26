@@ -13,6 +13,12 @@
 
 // ========== 设备扫描 ==========
 function startScan() {
+  if (state.connectionMode === 'real') {
+    scanRealDevices();
+    return;
+  }
+
+  // Simulated mode
   const btn = document.getElementById('scanBtn');
   const scanAnim = document.getElementById('scanAnimation');
   const scanStatus = document.getElementById('scanStatus');
@@ -271,5 +277,177 @@ function showConnectionFailedHelp(device) {
     <button class="btn btn-secondary" onclick="closeHelpModal()">稍后处理</button>
     <button class="btn btn-primary" onclick="closeHelpModal(); autoReconnect()">\ud83d\udd04 立即重连</button>
   `;
+  document.getElementById('helpModal').classList.add('show');
+}
+
+// ========== Web Bluetooth API - 真实设备连接 ==========
+
+/**
+ * Check if Web Bluetooth API is available
+ */
+function isBluetoothAvailable() {
+  return navigator && navigator.bluetooth ? true : false;
+}
+
+/**
+ * Scan and connect to real BLE devices using Web Bluetooth API
+ */
+async function scanRealDevices() {
+  const btn = document.getElementById('scanBtn');
+  const scanAnim = document.getElementById('scanAnimation');
+  const scanStatus = document.getElementById('scanStatus');
+  const deviceList = document.getElementById('deviceList');
+
+  if (!isBluetoothAvailable()) {
+    scanStatus.textContent = '⚠️ 当前浏览器不支持 Web Bluetooth API，请使用 Chrome/Edge 浏览器';
+    showBluetoothNotSupportedHelp();
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ 扫描中...';
+  scanAnim.style.display = 'block';
+  scanStatus.textContent = '正在搜索附近蓝牙设备...';
+  deviceList.innerHTML = '';
+
+  try {
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [
+        { services: ['headset'] },
+        { services: ['audio_sink'] },
+        { services: ['avrcp'] },
+      ],
+      optionalServices: [
+        'battery_service',
+        'device_information',
+        'generic_access'
+      ]
+    });
+
+    scanStatus.textContent = '发现设备: ' + (device.name || '未知设备');
+    const item = document.createElement('li');
+    item.className = 'device-item';
+    item.innerHTML =
+      '<div class="device-info">' +
+        '<div class="device-icon">🎧</div>' +
+        '<div>' +
+          '<div class="device-name">' + (device.name || '未知设备') + '</div>' +
+          '<div class="device-meta">BLE 设备 · ID: ' + device.id.substring(0, 12) + '...</div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="btn btn-primary btn-sm" onclick="connectRealDevice()">连接</button>';
+    deviceList.appendChild(item);
+
+    state._realBluetoothDevice = device;
+
+    scanAnim.style.display = 'none';
+    btn.innerHTML = '🔍 继续扫描';
+    btn.disabled = false;
+    scanStatus.textContent = '已发现设备，点击连接';
+
+  } catch (error) {
+    scanAnim.style.display = 'none';
+    btn.disabled = false;
+    btn.innerHTML = '🔍 重新扫描';
+
+    if (error.name === 'NotFoundError') {
+      scanStatus.textContent = '未选择设备，请重新点击扫描';
+    } else {
+      scanStatus.textContent = '扫描失败: ' + error.message;
+      addLog('蓝牙扫描失败: ' + error.message, 'error');
+    }
+  }
+}
+
+/**
+ * Connect to a real BLE device
+ */
+async function connectRealDevice() {
+  const device = state._realBluetoothDevice;
+  if (!device) {
+    showToast('⚠️ 未找到待连接设备，请先扫描', 'warning');
+    return;
+  }
+
+  document.getElementById('connectionFeedback').style.display = 'block';
+  var log = document.getElementById('connectionLog');
+  log.innerHTML = '';
+
+  addLog('正在连接 ' + (device.name || '未知设备') + '...');
+
+  try {
+    var server = await device.gatt.connect();
+    addLog('GATT 服务器已连接', 'success');
+
+    // Read battery level
+    try {
+      var batteryService = await server.getService('battery_service');
+      var batteryChar = await batteryService.getCharacteristic('battery_level');
+      var batteryValue = await batteryChar.readValue();
+      var batteryPercent = batteryValue.getUint8(0);
+      addLog('电量: ' + batteryPercent + '%', 'success');
+    } catch (e) {
+      addLog('无法读取电量信息（设备可能不支持 Battery Service）', 'warning');
+    }
+
+    // Read device information
+    try {
+      var devInfoService = await server.getService('device_information');
+      var modelChar = await devInfoService.getCharacteristic('model_number_string');
+      var modelValue = await modelChar.readValue();
+      var modelStr = new TextDecoder().decode(modelValue);
+      addLog('型号: ' + modelStr, 'success');
+    } catch (e) {
+      addLog('无法读取设备型号信息', 'warning');
+    }
+
+    var appDevice = {
+      id: device.id,
+      name: device.name || 'BLE Audio Device',
+      type: 'bluetooth',
+      battery: 85,
+      signal: -50,
+      firmware: 'v1.0.0',
+      gattServer: server
+    };
+
+    addLog('设备连接成功！', 'success');
+    finalizeConnection(appDevice);
+
+    // Listen for disconnect
+    device.addEventListener('gattserverdisconnected', function() {
+      addLog('⚠️ 设备已断开连接', 'warning');
+      state.connected = false;
+      document.getElementById('headerStatusDot').className = 'status-dot';
+      document.getElementById('headerStatusText').textContent = '已断开';
+      state._pendingReconnectDevice = appDevice;
+      document.getElementById('reconnectArea').style.display = 'block';
+    });
+
+  } catch (error) {
+    addLog('连接失败: ' + error.message, 'error');
+    showConnectionFailedHelp({ name: device.name || '未知设备' });
+  }
+}
+
+/**
+ * Show help for unsupported browsers
+ */
+function showBluetoothNotSupportedHelp() {
+  document.getElementById('helpModalTitle').textContent = '⚠️ 浏览器不支持蓝牙功能';
+  document.getElementById('helpBody').innerHTML =
+    '<p>当前浏览器不支持 Web Bluetooth API</p>' +
+    '<div class="solution">' +
+      '<div class="solution-title">解决方法：</div>' +
+      '<ol>' +
+        '<li>使用 <strong>Chrome</strong> 或 <strong>Edge</strong> 浏览器打开此页面</li>' +
+        '<li>确保使用 HTTPS 或 localhost 访问</li>' +
+        '<li>在浏览器设置中启用蓝牙功能</li>' +
+      '</ol>' +
+    '</div>' +
+    '<p style="margin-top: 12px; color: var(--accent);">💡 您也可以继续使用模拟模式体验完整功能</p>';
+  document.getElementById('helpActions').innerHTML =
+    '<button class="btn btn-secondary" onclick="closeHelpModal()">取消</button>' +
+    '<button class="btn btn-primary" onclick="closeHelpModal()">使用模拟模式</button>';
   document.getElementById('helpModal').classList.add('show');
 }

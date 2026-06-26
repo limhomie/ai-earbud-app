@@ -45,6 +45,16 @@
     <div class="card">
       <div class="card-title">🔗 设备连接</div>
       <div class="scan-area" id="scanArea">
+        <div class="connection-mode-selector" style="display:flex;gap:12px;margin-bottom:16px;">
+          <label class="connection-mode-option active" id="modeSimulated" onclick="setConnectionMode('simulated')">
+            <input type="radio" name="connectionMode" value="simulated" checked>
+            <span>🎮 模拟模式</span>
+          </label>
+          <label class="connection-mode-option" id="modeReal" onclick="setConnectionMode('real')">
+            <input type="radio" name="connectionMode" value="real">
+            <span>📡 真实蓝牙</span>
+          </label>
+        </div>
         <div class="scan-animation" id="scanAnimation" style="display: none;">
           <div class="scan-circle">🎧</div>
           <div class="scan-ring"></div>
@@ -197,6 +207,20 @@
           <div class="mode-name">高精度模式</div>
           <div class="mode-desc">更准确，耗时稍长</div>
         </div>
+      </div>
+      <div class="ai-processing-mode-selector" style="display:flex;gap:12px;margin-bottom:16px;">
+        <label class="ai-processing-mode-option active" id="aiModeSimulated" onclick="selectAiProcessingMode('simulated')">
+          <input type="radio" name="aiProcessingMode" value="simulated" checked>
+          <span>🎮 模拟模式</span>
+        </label>
+        <label class="ai-processing-mode-option" id="aiModeReal" onclick="selectAiProcessingMode('real')">
+          <input type="radio" name="aiProcessingMode" value="real">
+          <span>🤖 真实 AI API</span>
+        </label>
+      </div>
+      <div class="api-key-input" id="apiKeyArea" style="display:none;margin-bottom:16px;">
+        <input type="password" id="aiApiKeyInput" placeholder="输入 OpenAI API Key (sk-...)" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:14px;">
+        <button class="btn btn-secondary btn-sm" onclick="saveApiKey()" style="margin-top:8px;">💾 保存 Key</button>
       </div>
       <div class="language-selector">
         <span class="language-selector-label">🌐 翻译目标语言：</span>
@@ -424,6 +448,7 @@ const state = {
   recording: false,
   paused: false,
   simulated: false,
+  connectionMode: 'simulated', // 'simulated' | 'real'
   recordingTime: 0,
   recordingInterval: null,
   audioContext: null,
@@ -513,6 +538,27 @@ function switchTab(tabName) {
 function enableTab(tabName) {
   const tab = document.querySelector(`[data-tab="${tabName}"]`);
   if (tab) tab.disabled = false;
+}
+
+function setConnectionMode(mode) {
+  state.connectionMode = mode;
+  document.querySelectorAll('.connection-mode-option').forEach(el => el.classList.remove('active'));
+  document.getElementById(mode === 'simulated' ? 'modeSimulated' : 'modeReal').classList.add('active');
+  document.querySelector('input[name="connectionMode"][value="' + mode + '"]').checked = true;
+}
+
+function saveApiKey() {
+  var input = document.getElementById('aiApiKeyInput');
+  if (input && input.value.trim()) {
+    state.aiApiKey = input.value.trim();
+    input.value = '';
+    input.placeholder = 'API Key 已保存 ✓';
+    showToast('🔑 API Key 已保存', 'success');
+  }
+}
+
+function showApiKeyArea(show) {
+  document.getElementById('apiKeyArea').style.display = show ? 'block' : 'none';
 }
 
 function showToast(message, type = 'info') {
