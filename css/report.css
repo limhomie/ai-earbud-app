@@ -1,9 +1,17 @@
 /* ===== Module 6: Performance Report ===== */
+
+/* Charts Grid Layout - 2x2 */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
 .chart-container {
   background: var(--bg-secondary);
   border-radius: var(--radius);
   padding: 20px;
-  margin-bottom: 16px;
 }
 .chart-bar-group {
   display: flex;
@@ -57,6 +65,13 @@
   font-size: 13px;
   color: var(--text-secondary);
   line-height: 1.6;
+}
+
+/* Responsive: single column on small screens */
+@media (max-width: 768px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Empty State */
