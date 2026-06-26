@@ -12,35 +12,49 @@
 .recording-controls {
   display: flex;
   justify-content: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 20px;
 }
-.mic-btn {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  background: var(--bg-secondary);
+.rec-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
   border: 2px solid var(--border);
-  color: var(--text-primary);
-  font-size: 28px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
   transition: var(--transition);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 120px;
 }
-.mic-btn:hover { border-color: var(--accent); }
-.mic-btn.recording {
-  background: var(--danger);
-  border-color: var(--danger);
-  animation: pulse 1s infinite;
+.rec-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
-.mic-btn.paused {
-  background: var(--warning);
+.rec-btn-start {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+.rec-btn-start:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.rec-btn-pause {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+.rec-btn-pause:hover:not(:disabled) {
   border-color: var(--warning);
+  background: var(--warning);
   color: #000;
 }
-/* Paused state: no pulse animation, distinct from recording */
+.rec-btn-stop {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+.rec-btn-stop:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
 .recording-timer {
   text-align: center;
   font-size: 24px;

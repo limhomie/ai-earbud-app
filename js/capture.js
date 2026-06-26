@@ -64,23 +64,6 @@ function initWaveform() {
 }
 
 // ============================================================
-// TOGGLE RECORDING (start / pause / resume)
-// ============================================================
-
-async function toggleRecording() {
-  if (!state.recording && !state.paused) {
-    // Not recording and not paused -> start recording
-    await startRecording();
-  } else if (state.recording) {
-    // Currently recording -> pause
-    pauseRecording();
-  } else if (state.paused) {
-    // Currently paused -> resume
-    resumeRecording();
-  }
-}
-
-// ============================================================
 // START RECORDING (real mic or fallback to simulated)
 // ============================================================
 
@@ -102,7 +85,7 @@ async function startRecording() {
     state.noiseFloor = 0.02;
     state.peakVolumeValue = 0;
 
-    updateMicBtnUI('recording');
+    updateButtonStates('recording');
     startTimer();
     setAudioParamsUI(state.audioContext);
 
@@ -117,11 +100,11 @@ async function startRecording() {
     }
 
     drawWaveform();
-    showToast('\uD83C\uDF99\uFE0F 开始录音', 'info');
+    showToast('🎙️ 开始录音', 'info');
 
   } catch (err) {
-    console.error('\u9ea6\u514b\u98ce\u8bbf\u95ee\u5931\u8d25:', err);
-    showToast('\u274C \u65e0\u6cd5\u8bbf\u95ee\u9ea6\u514b\u98ce\uff0c\u4f7f\u7528\u6a21\u62df\u6a21\u5f0f', 'error');
+    console.error('麦克风访问失败:', err);
+    showToast('❌ 无法访问麦克风，使用模拟模式', 'error');
     // Fallback: simulate recording
     simulateRecording();
   }
@@ -149,40 +132,56 @@ function pauseRecording() {
     state.recordingInterval = null;
   }
 
-  updateMicBtnUI('paused');
-  showToast('\u23F8\uFE0F \u5df2\u6682\u505c', 'info');
+  updateButtonStates('paused');
+  showToast('⏸️ 已暂停', 'info');
 }
 
 // ============================================================
-// RESUME RECORDING (from paused state)
+// STOP RECORDING (full cleanup)
 // ============================================================
 
-function resumeRecording() {
-  if (!state.paused) return;
-
+function stopRecording() {
+  state.recording = false;
   state.paused = false;
-  state.recording = true;
+  state.simulated = false;
 
-  updateMicBtnUI('recording');
-  startTimer();
-
-  document.getElementById('aiProcessBtn').disabled = false;
-
-  // Ensure canvas is sized
-  const canvas = document.getElementById('waveformCanvas');
-  if (!state.canvasInitialized) {
-    canvas.width = canvas.offsetWidth * 2;
-    canvas.height = canvas.offsetHeight * 2;
-    state.canvasInitialized = true;
+  if (state.recordingInterval) {
+    clearInterval(state.recordingInterval);
+    state.recordingInterval = null;
+  }
+  if (state.animationId) {
+    cancelAnimationFrame(state.animationId);
+    state.animationId = null;
   }
 
-  if (state.simulated) {
-    drawSimulatedWaveform();
-  } else {
-    drawWaveform();
+  // Release media stream
+  if (state.mediaStream) {
+    state.mediaStream.getTracks().forEach(function(track) {
+      track.stop();
+    });
+    state.mediaStream = null;
   }
 
-  showToast('\u25B6\uFE0F \u5df2\u6062\u590d\u5f55\u97f3', 'info');
+  // Close audio context
+  if (state.audioContext) {
+    state.audioContext.close();
+    state.audioContext = null;
+  }
+
+  state.microphone = null;
+  state.analyser = null;
+
+  updateButtonStates('idle');
+  resetAudioParamsUI();
+
+  showToast('⏹️ 录音已停止', 'info');
+
+  // Switch to AI tab
+  switchTab('ai');
+
+  // Return to idle waveform
+  state.canvasInitialized = false;
+  initWaveform();
 }
 
 // ============================================================
@@ -190,12 +189,18 @@ function resumeRecording() {
 // ============================================================
 
 function drawWaveform() {
-  if (!state.recording || state.paused || !state.analyser) return;
+  // Only draw when recording (not paused) and analyser exists
+  if (!state.analyser) return;
+  if (!state.recording) {
+    // If not recording, return to idle
+    state.canvasInitialized = false;
+    initWaveform();
+    return;
+  }
 
   const canvas = document.getElementById('waveformCanvas');
   const ctx = canvas.getContext('2d');
 
-  // Canvas size was set during init/start; do NOT reset every frame
   const bufferLength = state.analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
   state.analyser.getByteTimeDomainData(dataArray);
@@ -214,17 +219,16 @@ function drawWaveform() {
 
   // Calculate volume from waveform data
   let sum = 0;
-  let maxDeviation = 0;
   for (let i = 0; i < bufferLength; i++) {
     const v = dataArray[i] / 128.0;
     const deviation = Math.abs(v - 1);
     sum += deviation;
-    if (deviation > maxDeviation) maxDeviation = deviation;
   }
   const avgVolume = sum / bufferLength;
   const currentVolume = Math.min(1, avgVolume * 2.5); // normalize to 0-1
 
   // Draw waveform with volume-proportional amplitude
+  // The waveform amplitude directly scales with microphone volume
   ctx.lineWidth = 2.5;
   ctx.strokeStyle = '#00d4ff';
   ctx.shadowColor = '#00d4ff';
@@ -236,8 +240,9 @@ function drawWaveform() {
 
   for (let i = 0; i < bufferLength; i++) {
     const v = dataArray[i] / 128.0;
-    // Scale the waveform visually based on current volume
-    const scaledY = (v - 1) * Math.max(1, currentVolume * 6);
+    // Direct waveform visualization: scale by current volume
+    // When volume is 0, waveform is flat; when volume is 1, full amplitude
+    const scaledY = (v - 1) * 8; // base multiplier for visibility
     const y = canvas.height / 2 + scaledY * (canvas.height / 4);
     if (i === 0) ctx.moveTo(x, y);
     else ctx.lineTo(x, y);
@@ -344,7 +349,7 @@ function simulateRecording() {
   state.noiseFloor = 0.015;
   state.peakVolumeValue = 0;
 
-  updateMicBtnUI('recording');
+  updateButtonStates('recording');
   startTimer();
 
   document.getElementById('aiProcessBtn').disabled = false;
@@ -513,26 +518,34 @@ function stopRecording() {
 // ============================================================
 
 /**
- * Update the mic button appearance based on state
- * @param {'idle'|'recording'|'paused'} state
+ * Update button states based on recording state
+ * @param {'idle'|'recording'|'paused'} uiState
  */
-function updateMicBtnUI(uiState) {
-  const btn = document.getElementById('micBtn');
+function updateButtonStates(uiState) {
+  const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const timer = document.getElementById('recordingTimer');
 
-  // Remove all state classes
-  btn.classList.remove('recording', 'paused');
+  // Reset timer class
+  timer.classList.remove('paused-timer');
 
   switch (uiState) {
     case 'idle':
-      btn.innerHTML = '\uD83C\uDF99\uFE0F';
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      stopBtn.disabled = true;
       break;
     case 'recording':
-      btn.classList.add('recording');
-      btn.innerHTML = '\u23F9\uFE0F';
+      startBtn.disabled = true;
+      pauseBtn.disabled = false;
+      stopBtn.disabled = false;
       break;
     case 'paused':
-      btn.classList.add('paused');
-      btn.innerHTML = '\u25B6\uFE0F';
+      startBtn.disabled = true;
+      pauseBtn.disabled = true;
+      stopBtn.disabled = false;
+      timer.classList.add('paused-timer');
       break;
   }
 }
@@ -620,11 +633,3 @@ if (typeof state.mediaStream === 'undefined') state.mediaStream = null;
 if (typeof state.volumeHistory === 'undefined') state.volumeHistory = [];
 if (typeof state.peakVolumeValue === 'undefined') state.peakVolumeValue = 0;
 if (typeof state.noiseFloor === 'undefined') state.noiseFloor = 0.015;
-
-// Add paused style dynamically (in case it is not in the CSS)
-if (!document.getElementById('capture-dynamic-style')) {
-  var styleEl = document.createElement('style');
-  styleEl.id = 'capture-dynamic-style';
-  styleEl.textContent = '.mic-btn.paused { background: var(--warning); border-color: var(--warning); animation: none; }';
-  document.head.appendChild(styleEl);
-}

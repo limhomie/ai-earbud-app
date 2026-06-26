@@ -120,7 +120,9 @@
       </div>
       <div class="recording-timer" id="recordingTimer">00:00</div>
       <div class="recording-controls">
-        <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎤</button>
+        <button class="rec-btn rec-btn-start" id="startBtn" onclick="startRecording()">🎤 开始录音</button>
+        <button class="rec-btn rec-btn-pause" id="pauseBtn" onclick="pauseRecording()" disabled>⏸️ 暂停</button>
+        <button class="rec-btn rec-btn-stop" id="stopBtn" onclick="stopRecording()" disabled>⏹️ 停止</button>
       </div>
       <div class="audio-params">
         <div class="param-item">
