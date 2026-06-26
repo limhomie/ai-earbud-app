@@ -198,6 +198,17 @@
           <div class="mode-desc">更准确，耗时稍长</div>
         </div>
       </div>
+      <div class="language-selector">
+        <span class="language-selector-label">🌐 翻译目标语言：</span>
+        <select id="targetLangSelect" onchange="changeTargetLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="zh">中文</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+          <option value="fr">Français</option>
+          <option value="de">Deutsch</option>
+        </select>
+      </div>
       <div class="pipeline" id="pipeline">
         <div class="pipeline-step" id="step-stt">
           <div class="step-icon"><span class="step-icon-emoji">🎤</span><span class="step-checkmark">&#10003;</span></div>
@@ -250,6 +261,14 @@
           <span>中</span>
           <span>高</span>
         </div>
+      </div>
+      <!-- Conversation History -->
+      <div class="conversation-history" id="conversationHistory" style="display: none;">
+        <div class="conversation-header">
+          <span>对话历史</span>
+          <span class="conversation-count" id="conversationCount">0 轮</span>
+        </div>
+        <div class="conversation-list" id="conversationList"></div>
       </div>
       <div class="result-tabs">
         <button class="result-tab active" onclick="switchResultTab('transcript')">转写文本</button>
@@ -323,6 +342,52 @@
 
 </main>
 
+<!-- Privacy Modal -->
+<div class="modal-overlay" id="privacyModal">
+  <div class="modal privacy-modal">
+    <div class="privacy-header">
+      <h3>&#128274; 隐私与权限说明</h3>
+      <button class="modal-close" onclick="closePrivacyModal()">&times;</button>
+    </div>
+    <div class="privacy-body">
+      <p><strong>麦克风权限</strong>：本应用需要访问您的麦克风以录制语音输入。</p>
+      <p><strong>数据处理方式</strong>：</p>
+      <ul>
+        <li>所有语音数据仅在本地浏览器中处理</li>
+        <li>不会将您的语音数据上传到任何服务器</li>
+        <li>处理结果（转写、翻译）仅保存在本地</li>
+      </ul>
+      <p><strong>数据存储</strong>：</p>
+      <ul>
+        <li>对话历史存储在浏览器内存中</li>
+        <li>关闭页面后数据将自动清除</li>
+      </ul>
+      <div class="privacy-options">
+        <label class="privacy-option">
+          <input type="checkbox" id="localOnlyMode" checked>
+          <span class="privacy-option-text">仅本地处理模式（推荐）</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closePrivacyModal()">取消</button>
+      <button class="btn btn-primary" onclick="confirmPrivacyAndStart()">了解并开始</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpModal">
+  <div class="modal help-modal">
+    <div class="help-header">
+      <h3 id="helpModalTitle">&#9888;&#65039; 遇到问题</h3>
+      <button class="modal-close" onclick="closeHelpModal()">&times;</button>
+    </div>
+    <div class="help-body" id="helpBody"></div>
+    <div class="modal-actions" id="helpActions"></div>
+  </div>
+</div>
+
 <!-- Footer -->
 <footer style="text-align: center; padding: 20px; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border);">
   <p>Soundcore AI Earbuds Simulator v0.1.0 &copy; 2026 Anker Innovations</p>
@@ -382,6 +447,23 @@ const state = {
     translationEditCount: 0,
     totalClickCount: 0
   },
+  // Conversation chain: stores multi-turn recording history
+  conversationHistory: [],
+  // Current conversation turn index
+  currentTurn: 0,
+  // Target language for translation
+  privacyAccepted: false,
+  localOnlyMode: true,
+  targetLanguage: 'en', // 'en', 'ja', 'ko', 'fr', 'de'
+  // Language options
+  languageOptions: {
+    en: 'English',
+    zh: '中文',
+    ja: '日本語',
+    ko: '한국어',
+    fr: 'Français',
+    de: 'Deutsch'
+  },
   _pendingReconnectDevice: null,
   _currentDevice: null,
   devices: [
@@ -392,12 +474,28 @@ const state = {
   scenarios: {
     meeting: {
       text: '今天我们讨论一下Q1的产品规划，主要集中在新一代AI耳机的功能设计上。首先关于语音助手的响应速度，我们需要优化到200毫秒以内。其次在会议场景下的降噪算法也需要升级，特别是在多人对话的环境中。关于翻译功能，我们希望支持至少12种语言的实时互译。最后，智能摘要功能需要能够自动识别关键信息并生成结构化的会议纪要。',
-      translation: '今天我们讨论了Q1产品规划，聚焦于新一代AI耳机的功能设计。语音助手响应速度需优化至200ms以内。会议场景降噪算法需升级，尤其是多人对话环境。翻译功能需支持至少12种语言实时互译。智能摘要功能需自动识别关键信息并生成结构化会议纪要。',
+      translation: 'Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.',
+      translations: {
+        en: 'Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.',
+        zh: '今天我们讨论了Q1产品规划，聚焦于新一代AI耳机的功能设计。语音助手响应速度需优化至200ms以内。会议场景降噪算法需升级，尤其是多人对话环境。翻译功能需支持至少12种语言实时互译。智能摘要功能需自动识别关键信息并生成结构化会议纪要。',
+        ja: '本日Q1製品計画について議論し、新世代AIイヤホンの機能設計に焦点を当てました。音声アシスタントの応答速度は200ms以内に最適化する必要があります。会議シーンのノイズキャンセリングアルゴリズムのアップグレードが必要で、特に複数人の対話環境において。翻訳機能は少なくとも12言語のリアルタイム相互翻訳をサポートする必要があります。スマート要約機能は重要情報を自動的に識別し、構造化された議事録を生成する必要があります。',
+        ko: '오늘 우리는 Q1 제품 계획에 대해 논의했으며, 차세대 AI 이어버드의 기능 설계에 중점을 둡니다. 음성 어시스턴트 응답 속도를 200ms 이내로 최적화해야 합니다. 회의 환경의 노이즈 캔슬링 알고리즘을 업그레이드해야 하며, 특히 다중 대화 환경에서 그렇습니다. 번역 기능은 최소 12개 언어의 실시간 상호 번역을 지원해야 합니다. 스마트 요약 기능은 자동으로 핵심 정보를 식별하고 구조화된 회의록을 생성해야 합니다.',
+        fr: "Aujourd'hui nous avons discuté de la planification du produit Q1, en nous concentrant sur la conception fonctionnelle de la nouvelle génération d'écouteurs IA. La vitesse de réponse de l'assistant vocal doit être optimisée à moins de 200 ms. Les algorithmes de réduction de bruit pour les scénarios de réunion doivent être améliorés, en particulier dans les environnements de dialogue multi-personnes. La fonction de traduction doit supporter la traduction mutuelle en temps réel d'au moins 12 langues.",
+        de: 'Heute haben wir über die Q1-Produktplanung diskutiert und uns auf das funktionale Design der neuen Generation von AI-Kopfhörern konzentriert. Die Reaktionsgeschwindigkeit des Sprachassistenten muss auf unter 200 ms optimiert werden. Geräuschunterdrückungsalgorithmen für Besprechungsszenarien müssen verbessert werden, insbesondere in Umgebungen mit Mehrpersonendialogen. Die Übersetzungsfunktion muss Echtzeit-Übersetzung in mindestens 12 Sprachen unterstützen.'
+      },
       summary: ['Q1产品规划聚焦AI耳机功能设计', '语音助手响应速度目标：200ms以内', '多人会议场景降噪算法需升级', '翻译功能支持12种以上语言实时互译', '智能摘要自动生成结构化会议纪要']
     },
     learning: {
       text: 'Hello, today we will learn about artificial intelligence and its applications in daily life. AI has become an integral part of modern technology, from voice assistants to autonomous vehicles. Machine learning, a subset of AI, enables computers to learn from data without being explicitly programmed. Deep learning, which uses neural networks with multiple layers, has revolutionized image recognition and natural language processing.',
       translation: '大家好，今天我们将学习人工智能及其在日常生活中的应用。AI已成为现代技术的重要组成部分，从语音助手到自动驾驶汽车。机器学习作为AI的一个子集，使计算机能够从数据中学习而无需显式编程。深度学习使用多层神经网络，已经彻底改变了图像识别和自然语言处理领域。',
+      translations: {
+        en: 'Hello, today we will learn about artificial intelligence and its applications in daily life. AI has become an integral part of modern technology, from voice assistants to autonomous vehicles. Machine learning, a subset of AI, enables computers to learn from data without being explicitly programmed. Deep learning, which uses neural networks with multiple layers, has revolutionized image recognition and natural language processing.',
+        zh: '大家好，今天我们将学习人工智能及其在日常生活中的应用。AI已成为现代技术的重要组成部分，从语音助手到自动驾驶汽车。机器学习作为AI的一个子集，使计算机能够从数据中学习而无需显式编程。深度学习使用多层神经网络，已经彻底改变了图像识别和自然语言处理领域。',
+        ja: '皆さん、こんにちは。今日は人工知能とその日常生活での応用について学びます。AIは音声アシスタントから自動運転車まで、現代技術の不可欠な部分になりました。機械学習はAIのサブセットであり、コンピュータが明示的にプログラムされなくてもデータから学習できるようにします。ディープラーニングは多層ニューラルネットワークを使用し、画像認識と自然言語処理に革命をもたらしました。',
+        ko: '안녕하세요, 오늘은 인공지능과 일상생활에서의 응용에 대해 배워보겠습니다. AI는 음성 어시스턴트부터 자율주행 차량까지 현대 기술의 중요한 부분이 되었습니다. 기계 학습은 AI의 하위 집합으로, 컴퓨터가 명시적으로 프로그래밍되지 않아도 데이터에서 학습할 수 있게 합니다. 딥러닝은 다층 뉴럴 네트워크를 사용하여 이미지 인식과 자연어 처리에 혁신을 가져왔습니다.',
+        fr: "Bonjour, aujourd'hui nous allons apprendre sur l'intelligence artificielle et ses applications dans la vie quotidienne. L'IA est devenue une partie intégrante de la technologie moderne, des assistants vocaux aux véhicules autonomes. L'apprentissage automatique, un sous-ensemble de l'IA, permet aux ordinateurs d'apprendre à partir de données sans être explicitement programmés. L'apprentissage profond, qui utilise des réseaux de neurones à plusieurs couches, a révolutionné la reconnaissance d'images et le traitement du langage naturel.",
+        de: 'Hallo, heute werden wir über künstliche Intelligenz und ihre Anwendungen im täglichen Leben lernen. KI ist ein integraler Bestandteil der modernen Technologie geworden, von Sprachassistenten bis hin zu autonomen Fahrzeugen. Maschinelles Lernen, ein Teilbereich der KI, ermöglicht es Computern, aus Daten zu lernen, ohne explizit programmiert zu werden. Deep Learning, das neuronale Netze mit mehreren Schichten verwendet, hat die Bilderkennung und die Verarbeitung natürlicher Sprache revolutioniert.'
+      },
       summary: ['主题：人工智能及其日常应用', 'AI是现代技术的重要组成部分', '机器学习使计算机能从数据中学习', '深度学习革新了图像识别和NLP领域']
     }
   }
@@ -430,6 +528,20 @@ function showToast(message, type = 'info') {
 document.addEventListener('click', function() {
   if (state.userActions) {
     state.userActions.totalClickCount++;
+  }
+});
+
+// ========== Help Modal ==========
+function closeHelpModal() {
+  var modal = document.getElementById('helpModal');
+  if (modal) modal.classList.remove('show');
+}
+
+// ========== Sync language selector on load ==========
+window.addEventListener('DOMContentLoaded', function() {
+  var select = document.getElementById('targetLangSelect');
+  if (select && state.targetLanguage) {
+    select.value = state.targetLanguage;
   }
 });
 </script>

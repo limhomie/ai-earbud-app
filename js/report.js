@@ -81,25 +81,65 @@ function updateReport() {
     </div>
   `).join('');
 
-  // Insights
+  // Enhanced insights with user behavior analysis
+  var avgResponseTime = 0;
+  var avgAccuracy = 0;
+  var avgAITime = 0;
+  data.forEach(function(d) {
+    avgResponseTime += d.responseTime;
+    avgAccuracy += d.accuracy;
+    avgAITime += d.aiTime;
+  });
+  avgResponseTime = Math.round(avgResponseTime / data.length);
+  avgAccuracy = Math.round(avgAccuracy / data.length);
+  avgAITime = Math.round(avgAITime / data.length);
+
+  // Analyze preferred scenario
+  var meetingCount = 0;
+  var learningCount = 0;
+  var convHistory = state.conversationHistory || [];
+  convHistory.forEach(function(c) {
+    if (c.scenario === 'meeting') meetingCount++;
+    else if (c.scenario === 'learning') learningCount++;
+  });
+  var preferredScenario = meetingCount > learningCount ? '会议场景' : meetingCount < learningCount ? '学习场景' : '两者均衡';
+
+  // Generate personalized suggestions
+  var suggestions = [];
+  if (avgAccuracy < 85) {
+    suggestions.push('识别准确率偏低，建议在安静环境下使用');
+  }
+  if (avgAITime > 3000) {
+    suggestions.push('AI处理耗时较长，可尝试标准模式以提升速度');
+  }
+  if (convHistory.length > 3) {
+    suggestions.push('您已使用多轮对话功能，建议尝试自动整理会议纪要');
+  }
+  if (suggestions.length === 0) {
+    suggestions.push('当前使用状态良好，继续保持');
+  }
+
+  var totalActionCount = (actions.recordingCount || 0) + (actions.aiProcessCount || 0) + (actions.scenarioSwitchCount || 0) + (actions.translationEditCount || 0);
+
   const insights = document.getElementById('insightsContainer');
-  const lastData = data[data.length - 1];
-  const totalActions = (actions.recordingCount || 0) + (actions.aiProcessCount || 0) + (actions.scenarioSwitchCount || 0) + (actions.translationEditCount || 0);
   insights.innerHTML = `
     <div class="insight-card">
-      <h5>💡 体验分析</h5>
-      <p>最近一次识别准确率为 <strong>${lastData.accuracy}%</strong>，响应时间 <strong>${lastData.responseTime}ms</strong>。${lastData.accuracy > 90 ? '识别效果优秀，系统运行良好。' : '建议在安静环境下使用，可有效提升识别准确率。'}</p>
+      <h5>📊 使用行为报告</h5>
+      <p>平均响应时间 <strong>${avgResponseTime}ms</strong> · 平均准确率 <strong>${avgAccuracy}%</strong> · 平均AI耗时 <strong>${avgAITime}ms</strong></p>
+      <p>累计使用 <strong>${totalActionCount}</strong> 次操作，完成 <strong>${convHistory.length}</strong> 轮对话</p>
     </div>
     <div class="insight-card">
-      <h5>📊 操作统计</h5>
-      <p>累计录音 <strong>${actions.recordingCount || 0}</strong> 次，AI 处理 <strong>${actions.aiProcessCount || 0}</strong> 次，场景切换 <strong>${actions.scenarioSwitchCount || 0}</strong> 次，翻译编辑 <strong>${actions.translationEditCount || 0}</strong> 次。总操作 <strong>${totalActions}</strong> 次。</p>
+      <h5>🎯 使用偏好分析</h5>
+      <p>常用场景：<strong>${preferredScenario}</strong></p>
+      <p>录音 ${actions.recordingCount || 0} 次 · AI处理 ${actions.aiProcessCount || 0} 次 · 场景切换 ${actions.scenarioSwitchCount || 0} 次</p>
     </div>
     <div class="insight-card">
-      <h5>🎯 优化建议</h5>
-      <p>• 建议在低噪环境中使用，识别效果最优<br>
-         • 语速控制在 150-180 词/分钟时识别最准确<br>
-         • 保持耳机与设备距离在 3 米以内<br>
-         • 定期更新固件以获得最佳性能</p>
+      <h5>💡 个性化建议</h5>
+      <p>${suggestions.map(function(s) { return '• ' + s; }).join('<br>')}</p>
+    </div>
+    <div class="insight-card">
+      <h5>🔒 数据安全</h5>
+      <p>所有数据存储于本地浏览器 · 关闭页面后自动清除 · 未经您的许可不会上传任何数据</p>
     </div>
   `;
 }

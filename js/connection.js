@@ -129,7 +129,7 @@ function simulateConnectionFlow(device) {
         if (failChance < 0.3) {
           // Connection FAILED
           addLog('连接失败: 蓝牙握手超时 (ErrorCode: 0x08)', 'error');
-          showToast('❌ 连接失败，请重试', 'error');
+          showConnectionFailedHelp(device);
 
           // Update header status
           document.getElementById('headerStatusDot').className = 'status-dot';
@@ -247,4 +247,29 @@ function startConnectionMonitor(device) {
       startConnectionMonitor(device);
     }, 3000);
   }, delay);
+}
+
+/**
+ * Show connection failed help modal
+ */
+function showConnectionFailedHelp(device) {
+  document.getElementById('helpModalTitle').textContent = '\u26a0\ufe0f 连接失败';
+  document.getElementById('helpBody').innerHTML = `
+    <p>无法连接到 <strong>${device.name}</strong></p>
+    <p>错误：蓝牙握手超时 (ErrorCode: 0x08)</p>
+    <div class="solution">
+      <div class="solution-title">建议操作：</div>
+      <ol>
+        <li>确认耳机已开机且处于配对模式</li>
+        <li>将耳机靠近设备（1米以内）</li>
+        <li>检查是否已与其他设备连接</li>
+        <li>尝试重启蓝牙功能</li>
+      </ol>
+    </div>
+  `;
+  document.getElementById('helpActions').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeHelpModal()">稍后处理</button>
+    <button class="btn btn-primary" onclick="closeHelpModal(); autoReconnect()">\ud83d\udd04 立即重连</button>
+  `;
+  document.getElementById('helpModal').classList.add('show');
 }

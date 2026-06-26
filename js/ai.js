@@ -188,6 +188,18 @@ function displayConfidence(confidence) {
 function generateResults() {
   const scenario = state.scenarios[state.currentScenario];
   const isEnglish = state.currentScenario === 'learning';
+  const targetLang = state.targetLanguage || 'en';
+
+  // Get translated text based on target language
+  var translatedText;
+  if (scenario.translations && scenario.translations[targetLang]) {
+    translatedText = scenario.translations[targetLang];
+  } else {
+    translatedText = scenario.translation;
+  }
+
+  // Get target language display name
+  var targetLangName = state.languageOptions && state.languageOptions[targetLang] ? state.languageOptions[targetLang] : targetLang;
 
   // Transcript
   const transcriptEl = document.getElementById('transcriptText');
@@ -233,8 +245,8 @@ function generateResults() {
           <p style="font-size: 14px; line-height: 1.7;">${scenario.text}</p>
         </div>
         <div class="translation-cell">
-          <div class="lang-label">中文 (翻译)</div>
-          <p style="font-size: 14px; line-height: 1.7;">${scenario.translation}</p>
+          <div class="lang-label">${targetLangName} (Translation)</div>
+          <p style="font-size: 14px; line-height: 1.7;">${translatedText}</p>
         </div>
       </div>
     `;
@@ -246,8 +258,8 @@ function generateResults() {
           <p style="font-size: 14px; line-height: 1.7;">${scenario.text}</p>
         </div>
         <div class="translation-cell">
-          <div class="lang-label">English (Translation)</div>
-          <p style="font-size: 14px; line-height: 1.7;">Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.</p>
+          <div class="lang-label">${targetLangName} (Translation)</div>
+          <p style="font-size: 14px; line-height: 1.7;">${translatedText}</p>
         </div>
       </div>
     `;

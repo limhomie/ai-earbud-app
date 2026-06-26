@@ -25,6 +25,9 @@ function switchScenario(scenarioName) {
   if (state.processed) {
     generateResults();
   }
+
+  // Update conversation history display
+  updateConversationHistoryDisplay();
 }
 
 // ========== 结果标签页切换 ==========
@@ -45,6 +48,18 @@ function switchResultTab(tabName) {
 function generateResults() {
   const scenario = state.scenarios[state.currentScenario];
   const isEnglish = state.currentScenario === 'learning';
+  const targetLang = state.targetLanguage || 'en';
+
+  // Get translated text based on target language
+  var translatedText;
+  if (scenario.translations && scenario.translations[targetLang]) {
+    translatedText = scenario.translations[targetLang];
+  } else {
+    translatedText = scenario.translation;
+  }
+
+  // Get target language display name
+  var targetLangName = state.languageOptions && state.languageOptions[targetLang] ? state.languageOptions[targetLang] : targetLang;
 
   // Transcript
   const transcriptEl = document.getElementById('transcriptText');
@@ -91,11 +106,11 @@ function generateResults() {
         </div>
         <div class="translation-cell">
           <div class="lang-label">
-            中文 (翻译)
+            ${targetLangName} (翻译)
             <button class="edit-translation-btn" onclick="toggleEditTranslation(this)" title="点击编辑/锁定">✏️ 编辑</button>
             <button class="reset-translation-btn" onclick="resetTranslation(this)" style="display:none;" title="恢复原文">🔄 恢复</button>
           </div>
-          <p class="translation-text editable" contenteditable="false" data-original="${scenario.translation}">${scenario.translation}</p>
+          <p class="translation-text editable" contenteditable="false" data-original="${translatedText}">${translatedText}</p>
           <div class="edit-hint" style="display:none;">✏️ 点击文本可直接修改翻译内容</div>
         </div>
       </div>
@@ -109,11 +124,11 @@ function generateResults() {
         </div>
         <div class="translation-cell">
           <div class="lang-label">
-            English (Translation)
+            ${targetLangName} (Translation)
             <button class="edit-translation-btn" onclick="toggleEditTranslation(this)" title="点击编辑/锁定">✏️ 编辑</button>
             <button class="reset-translation-btn" onclick="resetTranslation(this)" style="display:none;" title="恢复原文">🔄 恢复</button>
           </div>
-          <p class="translation-text editable" contenteditable="false" data-original="Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.">Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.</p>
+          <p class="translation-text editable" contenteditable="false" data-original="${translatedText}">${translatedText}</p>
           <div class="edit-hint" style="display:none;">✏️ 点击文本可直接修改翻译内容</div>
         </div>
       </div>
@@ -133,6 +148,23 @@ function generateResults() {
 
   // Show action bar
   document.getElementById('actionBar').style.display = 'flex';
+}
+
+// ========== 翻译语言切换 ==========
+
+/**
+ * 切换翻译目标语言
+ */
+function changeTargetLanguage(lang) {
+  state.targetLanguage = lang;
+  // Sync the select element in case it was called programmatically
+  var select = document.getElementById('targetLangSelect');
+  if (select) select.value = lang;
+  if (state.processed) {
+    generateResults();
+  }
+  var langName = state.languageOptions && state.languageOptions[lang] ? state.languageOptions[lang] : lang;
+  showToast('🌐 翻译语言已切换为: ' + langName, 'info');
 }
 
 // ========== 翻译编辑功能 ==========
@@ -211,4 +243,74 @@ function exportText() {
 // 分享结果（演示功能）
 function shareText() {
   showToast(' 分享链接已生成（演示功能）', 'info');
+}
+
+// ========== 对话历史显示 ==========
+
+/**
+ * Update the conversation history display
+ */
+function updateConversationHistoryDisplay() {
+  var container = document.getElementById('conversationHistory');
+  var list = document.getElementById('conversationList');
+  var count = document.getElementById('conversationCount');
+
+  if (!container || !list) return;
+
+  var history = state.conversationHistory || [];
+  if (history.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+  count.textContent = history.length + ' 轮';
+
+  var html = '';
+  history.forEach(function(record, index) {
+    var mins = Math.floor(record.duration / 60);
+    var secs = record.duration % 60;
+    var timeStr = mins + ':' + String(secs).padStart(2, '0');
+    var isActive = index === state.currentTurn - 1;
+    var timeLabel = new Date(record.timestamp).toLocaleTimeString();
+
+    html += '<div class="conversation-item' + (isActive ? ' active' : '') + '" onclick="loadConversationTurn(' + index + ')">';
+    html += '<div class="conversation-turn">' + record.turn + '</div>';
+    html += '<div class="conversation-meta">';
+    html += '<div class="conversation-preview">' + record.transcript + '</div>';
+    html += '<div class="conversation-time">第 ' + record.turn + ' 轮 \u00b7 ' + timeStr + ' \u00b7 ' + timeLabel + '</div>';
+    html += '</div></div>';
+  });
+
+  list.innerHTML = html;
+}
+
+/**
+ * Load a specific conversation turn
+ */
+function loadConversationTurn(index) {
+  state.currentTurn = index + 1;
+  var record = state.conversationHistory[index];
+  if (!record) return;
+
+  // Switch to that scenario
+  state.currentScenario = record.scenario;
+
+  // Update scenario buttons
+  document.querySelectorAll('.scenario-btn').forEach(function(btn) {
+    btn.classList.remove('active');
+    if (btn.textContent.includes(record.scenario === 'meeting' ? '会议' : '学习')) {
+      btn.classList.add('active');
+    }
+  });
+
+  // Regenerate results
+  if (state.processed) {
+    generateResults();
+  }
+
+  // Update display
+  updateConversationHistoryDisplay();
+
+  showToast('\ud83d\udcac 已切换到第 ' + (index + 1) + ' 轮对话', 'info');
 }

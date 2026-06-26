@@ -68,6 +68,12 @@ function initWaveform() {
 // ============================================================
 
 async function startRecording() {
+  // Check if privacy has been accepted
+  if (!state.privacyAccepted) {
+    showPrivacyModal();
+    return;
+  }
+
   try {
     // Ensure canvas is initialized before drawing
     const canvas = document.getElementById('waveformCanvas');
@@ -107,9 +113,7 @@ async function startRecording() {
 
   } catch (err) {
     console.error('麦克风访问失败:', err);
-    showToast('❌ 无法访问麦克风，使用模拟模式', 'error');
-    // Fallback: simulate recording
-    simulateRecording();
+    showMicPermissionHelp();
   }
 }
 
@@ -623,6 +627,9 @@ function stopRecording() {
 
   showToast('⏹️ 录音已停止', 'info');
 
+  // Save conversation record
+  saveConversationRecord();
+
   // Switch to AI tab
   switchTab('ai');
 
@@ -888,4 +895,91 @@ if (document.readyState === 'loading') {
     initNoiseSelector();
     initWaveform();
   }, 100);
+}
+
+// ============================================================
+// PRIVACY MODAL
+// ============================================================
+
+/**
+ * Show privacy modal
+ */
+function showPrivacyModal() {
+  document.getElementById('privacyModal').classList.add('show');
+}
+
+/**
+ * Close privacy modal
+ */
+function closePrivacyModal() {
+  document.getElementById('privacyModal').classList.remove('show');
+}
+
+/**
+ * Confirm privacy and start recording
+ */
+function confirmPrivacyAndStart() {
+  state.privacyAccepted = true;
+  state.localOnlyMode = document.getElementById('localOnlyMode').checked;
+  document.getElementById('privacyModal').classList.remove('show');
+  showToast('\ud83d\udd12 已了解隐私说明，开始录音', 'info');
+  // Start recording after confirmation
+  startRecording();
+}
+
+/**
+ * Show microphone permission help modal
+ */
+function showMicPermissionHelp() {
+  document.getElementById('helpModalTitle').textContent = '\ud83c\udfa4 麦克风权限不可用';
+  document.getElementById('helpBody').innerHTML = `
+    <p>无法访问麦克风，可能原因：</p>
+    <div class="solution">
+      <div class="solution-title">解决方法：</div>
+      <ol>
+        <li>在浏览器地址栏点击🔒图标，允许麦克风权限</li>
+        <li>检查系统设置中的浏览器麦克风权限</li>
+        <li>确保没有其他应用正在占用麦克风</li>
+      </ol>
+    </div>
+    <p style="margin-top: 12px; color: var(--accent);">\ud83d\udca1 您也可以使用模拟模式继续体验</p>
+  `;
+  document.getElementById('helpActions').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeHelpModal()">取消</button>
+    <button class="btn btn-primary" onclick="closeHelpModal(); simulateRecording();">\ud83c\udf99\ufe0f 使用模拟模式</button>
+  `;
+  document.getElementById('helpModal').classList.add('show');
+}
+
+// ============================================================
+// CONVERSATION RECORD (multi-turn history)
+// ============================================================
+
+/**
+ * Save current recording as a conversation record
+ */
+function saveConversationRecord() {
+  if (!state.conversationHistory) {
+    state.conversationHistory = [];
+  }
+
+  var record = {
+    turn: state.conversationHistory.length + 1,
+    duration: state.recordingTime,
+    timestamp: Date.now(),
+    clarity: document.getElementById('clarityScore').textContent,
+    peakVolume: state.peakVolumeValue,
+    noiseMode: state.noiseMode || 'quiet',
+    scenario: state.currentScenario,
+    // Simulated transcript based on scenario
+    transcript: state.scenarios[state.currentScenario].text.substring(0, 80) + '...',
+    // Use current target language for translation
+    targetLang: state.targetLanguage || 'en'
+  };
+
+  state.conversationHistory.push(record);
+  state.currentTurn = state.conversationHistory.length;
+
+  // Update conversation history display
+  updateConversationHistoryDisplay();
 }
