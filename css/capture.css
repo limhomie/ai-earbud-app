@@ -46,6 +46,16 @@
   background: var(--warning);
   color: #000;
 }
+.rec-btn-resume {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #000;
+}
+.rec-btn-resume:hover:not(:disabled) {
+  background: var(--bg-secondary);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
 .rec-btn-stop {
   background: var(--bg-secondary);
   color: var(--text-primary);

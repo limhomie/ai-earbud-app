@@ -69,6 +69,14 @@ function initWaveform() {
 
 async function startRecording() {
   try {
+    // Ensure canvas is initialized before drawing
+    const canvas = document.getElementById('waveformCanvas');
+    if (!state.canvasInitialized || canvas.width === 0) {
+      canvas.width = canvas.offsetWidth * 2;
+      canvas.height = canvas.offsetHeight * 2;
+      state.canvasInitialized = true;
+    }
+
     state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     state.mediaStream = stream;
@@ -83,21 +91,13 @@ async function startRecording() {
     state.paused = false;
     state.volumeHistory = [];
     state.noiseFloor = 0.02;
-    state.peakVolumeValue = 0;
+    state.peakVolumeValue = -100; // Initialize to minimum dB
 
     updateButtonStates('recording');
     startTimer();
     setAudioParamsUI(state.audioContext);
 
     document.getElementById('aiProcessBtn').disabled = false;
-
-    // Ensure canvas is initialized before drawing
-    const canvas = document.getElementById('waveformCanvas');
-    if (!state.canvasInitialized) {
-      canvas.width = canvas.offsetWidth * 2;
-      canvas.height = canvas.offsetHeight * 2;
-      state.canvasInitialized = true;
-    }
 
     drawWaveform();
     showToast('🎙️ 开始录音', 'info');
@@ -134,6 +134,38 @@ function pauseRecording() {
 
   updateButtonStates('paused');
   showToast('⏸️ 已暂停', 'info');
+}
+
+// ============================================================
+// RESUME RECORDING (from paused state)
+// ============================================================
+
+function resumeRecording() {
+  if (!state.paused) return;
+
+  state.paused = false;
+  state.recording = true;
+
+  updateButtonStates('recording');
+  startTimer();
+
+  document.getElementById('aiProcessBtn').disabled = false;
+
+  // Ensure canvas is sized
+  const canvas = document.getElementById('waveformCanvas');
+  if (!state.canvasInitialized) {
+    canvas.width = canvas.offsetWidth * 2;
+    canvas.height = canvas.offsetHeight * 2;
+    state.canvasInitialized = true;
+  }
+
+  if (state.simulated) {
+    drawSimulatedWaveform();
+  } else {
+    drawWaveform();
+  }
+
+  showToast('▶️ 已继续录音', 'info');
 }
 
 // ============================================================
@@ -342,12 +374,20 @@ function calculateClarity(history, currentVol, noiseFloor) {
 // ============================================================
 
 function simulateRecording() {
+  // Ensure canvas is initialized
+  const canvas = document.getElementById('waveformCanvas');
+  if (!state.canvasInitialized || canvas.width === 0) {
+    canvas.width = canvas.offsetWidth * 2;
+    canvas.height = canvas.offsetHeight * 2;
+    state.canvasInitialized = true;
+  }
+
   state.simulated = true;
   state.recording = true;
   state.paused = false;
   state.volumeHistory = [];
   state.noiseFloor = 0.015;
-  state.peakVolumeValue = 0;
+  state.peakVolumeValue = -100; // Initialize to minimum dB
 
   updateButtonStates('recording');
   startTimer();
@@ -357,16 +397,8 @@ function simulateRecording() {
   // Set simulated audio params
   setAudioParamsUI(null);
 
-  // Ensure canvas is initialized
-  const canvas = document.getElementById('waveformCanvas');
-  if (!state.canvasInitialized) {
-    canvas.width = canvas.offsetWidth * 2;
-    canvas.height = canvas.offsetHeight * 2;
-    state.canvasInitialized = true;
-  }
-
   drawSimulatedWaveform();
-  showToast('\uD83C\uDF99\uFE0F \u5f00\u59cb\u5f55\u97f3\uff08\u6a21\u62df\u6a21\u5f0f\uff09', 'info');
+  showToast('🎙️ 开始录音（模拟模式）', 'info');
 }
 
 // ============================================================
@@ -501,10 +533,10 @@ function stopRecording() {
   state.microphone = null;
   state.analyser = null;
 
-  updateMicBtnUI('idle');
+  updateButtonStates('idle');
   resetAudioParamsUI();
 
-  showToast('\u23F9\uFE0F \u5f55\u97f3\u5df2\u505c\u6b62', 'info');
+  showToast('⏹️ 录音已停止', 'info');
 
   // Switch to AI tab
   switchTab('ai');
@@ -534,16 +566,26 @@ function updateButtonStates(uiState) {
     case 'idle':
       startBtn.disabled = false;
       pauseBtn.disabled = true;
+      pauseBtn.innerHTML = '⏸️ 暂停';
+      pauseBtn.onclick = pauseRecording;
+      pauseBtn.className = 'rec-btn rec-btn-pause';
       stopBtn.disabled = true;
       break;
     case 'recording':
       startBtn.disabled = true;
       pauseBtn.disabled = false;
+      pauseBtn.innerHTML = '⏸️ 暂停';
+      pauseBtn.onclick = pauseRecording;
+      pauseBtn.className = 'rec-btn rec-btn-pause';
       stopBtn.disabled = false;
       break;
     case 'paused':
       startBtn.disabled = true;
-      pauseBtn.disabled = true;
+      pauseBtn.disabled = false;
+      // Change pause button to resume button
+      pauseBtn.innerHTML = '▶️ 继续';
+      pauseBtn.onclick = resumeRecording;
+      pauseBtn.className = 'rec-btn rec-btn-resume';
       stopBtn.disabled = false;
       timer.classList.add('paused-timer');
       break;
@@ -633,3 +675,12 @@ if (typeof state.mediaStream === 'undefined') state.mediaStream = null;
 if (typeof state.volumeHistory === 'undefined') state.volumeHistory = [];
 if (typeof state.peakVolumeValue === 'undefined') state.peakVolumeValue = 0;
 if (typeof state.noiseFloor === 'undefined') state.noiseFloor = 0.015;
+
+// Initialize idle waveform after DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initWaveform, 100);
+  });
+} else {
+  setTimeout(initWaveform, 100);
+}
