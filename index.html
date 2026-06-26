@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soundcore AI - 智能耳机语音助手</title>
+  <style>
+    /* ========== CSS Variables ========== */
+    :root {
+      --bg-primary: #0d0d1a;
+      --bg-secondary: #1a1a2e;
+      --bg-card: #16213e;
+      --bg-card-hover: #1a2745;
+      --accent: #00d4ff;
+      --accent-dim: #0099cc;
+      --accent-glow: rgba(0, 212, 255, 0.3);
+      --success: #00e676;
+      --warning: #ffab00;
+      --danger: #ff5252;
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0b8;
+      --text-dim: #6a6a80;
+      --border: #2a2a40;
+      --radius: 12px;
+      --radius-lg: 20px;
+      --shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+      --transition: all 0.3s ease;
+    }
+
+    /* ========== Reset & Base ========== */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ========== Header ========== */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 700;
+    }
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .device-status-mini {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .status-dot.connected { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .status-dot.connecting { background: var(--warning); animation: pulse 1s infinite; }
+
+    /* ========== Navigation Tabs ========== */
+    .nav-tabs {
+      display: flex;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      padding: 14px 24px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: var(--transition);
+      white-space: nowrap;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .nav-tab:hover { color: var(--text-primary); }
+    .nav-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .nav-tab:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* ========== Main Content ========== */
+    .main-content {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.4s ease;
+    }
+    .tab-panel.active { display: block; }
+
+    /* ========== Cards ========== */
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      margin-bottom: 20px;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ========== Buttons ========== */
+    .btn {
+      padding: 12px 28px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: var(--transition);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #000;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px var(--accent-glow); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); }
+    .btn-danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .btn-sm { padding: 8px 16px; font-size: 13px; }
+
+    /* ========== Device Connection ========== */
+    .scan-area {
+      text-align: center;
+      padding: 40px 0;
+    }
+    .scan-animation {
+      width: 160px;
+      height: 160px;
+      margin: 0 auto 30px;
+      position: relative;
+    }
+    .scan-circle {
+      width: 80px;
+      height: 80px;
+      background: var(--bg-card);
+      border: 3px solid var(--accent);
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      z-index: 2;
+    }
+    .scan-ring {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 2px solid var(--accent-glow);
+      border-radius: 50%;
+      animation: scanPulse 2s infinite;
+    }
+    .scan-ring:nth-child(2) { animation-delay: 0.5s; }
+    .scan-ring:nth-child(3) { animation-delay: 1s; }
+
+    .device-list { list-style: none; }
+    .device-item {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--border);
+      transition: var(--transition);
+      animation: slideIn 0.4s ease;
+    }
+    .device-item:hover { border-color: var(--accent); }
+    .device-info { display: flex; align-items: center; gap: 16px; }
+    .device-icon {
+      width: 48px;
+      height: 48px;
+      background: var(--bg-card);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+    .device-name { font-weight: 600; margin-bottom: 4px; }
+    .device-meta { font-size: 12px; color: var(--text-secondary); }
+    .signal-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 20px;
+    }
+    .signal-bar {
+      width: 4px;
+      background: var(--text-dim);
+      border-radius: 2px;
+    }
+    .signal-bar.active { background: var(--success); }
+
+    /* ========== Pairing Modal ========== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--bg-card);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      max-width: 360px;
+      width: 90%;
+      text-align: center;
+      border: 1px solid var(--border);
+      animation: modalIn 0.3s ease;
+    }
+    .modal h3 { margin-bottom: 12px; }
+    .modal p { color: var(--text-secondary); margin-bottom: 20px; font-size: 14px; }
+    .pairing-code {
+      font-size: 36px;
+      font-weight: 700;
+      letter-spacing: 8px;
+      color: var(--accent);
+      margin: 20px 0;
+      font-family: monospace;
+    }
+    .modal-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; }
+
+    /* ========== Device Monitor ========== */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 16px;
+    }
+    .status-item {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 16px;
+      text-align: center;
+    }
+    .status-icon { font-size: 28px; margin-bottom: 8px; }
+    .status-value { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+    .status-label { font-size: 12px; color: var(--text-secondary); }
+    .status-good { color: var(--success); }
+    .status-warn { color: var(--warning); }
+    .status-bad { color: var(--danger); }
+
+    .alert-banner {
+      background: rgba(255, 82, 82, 0.1);
+      border: 1px solid var(--danger);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      animation: slideIn 0.3s ease;
+    }
+    .alert-banner.show { display: flex; }
+    .alert-banner.warning {
+      background: rgba(255, 171, 0, 0.1);
+      border-color: var(--warning);
+    }
+
+    /* ========== Audio Capture ========== */
+    .waveform-container {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      height: 120px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    #waveformCanvas {
+      width: 100%;
+      height: 100%;
+    }
+    .recording-controls {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .mic-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      color: var(--text-primary);
+      font-size: 28px;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mic-btn:hover { border-color: var(--accent); }
+    .mic-btn.recording {
+      background: var(--danger);
+      border-color: var(--danger);
+      animation: pulse 1s infinite;
+    }
+    .recording-timer {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 700;
+      font-family: monospace;
+      margin-bottom: 16px;
+      color: var(--accent);
+    }
+    .audio-params {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    .param-item {
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .param-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+    .param-value { font-size: 14px; font-weight: 600; }
+
+    /* ========== AI Processing ========== */
+    .pipeline {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      position: relative;
+    }
+    .pipeline-step {
+      flex: 1;
+      text-align: center;
+      padding: 16px 12px;
+      position: relative;
+    }
+    .pipeline-step::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      right: 0;
+      width: 30px;
+      height: 2px;
+      background: var(--border);
+    }
+    .pipeline-step:last-child::after { display: none; }
+    .pipeline-step.active .step-icon {
+      background: var(--accent);
+      color: #000;
+      animation: pulse 1s infinite;
+    }
+    .pipeline-step.done .step-icon {
+      background: var(--success);
+      color: #000;
+    }
+    .step-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 8px;
+      transition: var(--transition);
+    }
+    .step-label { font-size: 12px; color: var(--text-secondary); }
+
+    .confidence-bar {
+      height: 6px;
+      background: var(--bg-secondary);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .confidence-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--success));
+      border-radius: 3px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .mode-option {
+      flex: 1;
+      padding: 12px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .mode-option.selected {
+      border-color: var(--accent);
+      background: rgba(0, 212, 255, 0.1);
+    }
+    .mode-name { font-weight: 600; margin-bottom: 4px; }
+    .mode-desc { font-size: 11px; color: var(--text-secondary); }
+
+    /* ========== Results ========== */
+    .result-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .result-tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      font-size: 14px;
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+    .result-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .result-content { display: none; }
+    .result-content.active { display: block; }
+
+    .transcript-text {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 20px;
+      line-height: 1.8;
+      font-size: 15px;
+      min-height: 100px;
+    }
+    .transcript-text .word {
+      display: inline;
+      padding: 2px 0;
+      border-radius: 3px;
+    }
+    .transcript-text .word.high { background: rgba(0, 230, 118, 0.15); }
+    .transcript-text .word.medium { background: rgba(255, 171, 0, 0.15); }
+    .transcript-text .word.low { background: rgba(255, 82, 82, 0.15); }
+
+    .translation-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    .translation-cell {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .translation-cell .lang-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .summary-card {
+      background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+    }
+    .summary-card h4 {
+      color: var(--accent);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .summary-points { list-style: none; }
+    .summary-points li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .summary-points li:last-child { border-bottom: none; }
+    .summary-points li::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      margin-top: 8px;
+      flex-shrink: 0;
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* ========== Performance Report ========== */
+    .chart-container {
+      background: var(--bg-secondary);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .chart-bar-group {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 120px;
+      padding-top: 10px;
+    }
+    .chart-bar-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .chart-bar {
+      width: 100%;
+      max-width: 50px;
+      background: linear-gradient(to top, var(--accent-dim), var(--accent));
+      border-radius: 4px 4px 0 0;
+      transition: height 0.8s ease;
+    }
+    .chart-bar-label {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      text-align: center;
+    }
+    .chart-bar-value {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .insight-card {
+      background: rgba(0, 212, 255, 0.08);
+      border: 1px solid var(--accent-dim);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .insight-card h5 {
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .insight-card p {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    /* ========== Empty State ========== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+    .empty-state h4 { margin-bottom: 8px; color: var(--text-primary); }
+
+    /* ========== Animations ========== */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: none; } }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes scanPulse {
+      0% { width: 80px; height: 80px; opacity: 0.6; }
+      100% { width: 200px; height: 200px; opacity: 0; }
+    }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 600px) {
+      .header { padding: 12px 16px; }
+      .logo { font-size: 18px; }
+      .nav-tab { padding: 12px 16px; font-size: 13px; }
+      .main-content { padding: 16px 12px; }
+      .card { padding: 16px; }
+      .translation-row { grid-template-columns: 1fr; }
+      .status-grid { grid-template-columns: repeat(2, 1fr); }
+      .pipeline { flex-wrap: wrap; }
+      .pipeline-step::after { display: none; }
+    }
+
+    @media (min-width: 900px) {
+      .main-content { padding: 32px 24px; }
+      .status-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    /* ========== Processing Overlay ========== */
+    .processing-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      flex-direction: column;
+    }
+    .processing-overlay.show { display: flex; }
+    .processing-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .processing-text { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    .processing-sub { font-size: 13px; color: var(--text-secondary); }
+
+    /* ========== Toast ========== */
+    .toast-container {
+      position: fixed;
+      top: 80px;
+      right: 16px;
+      z-index: 1001;
+    }
+    .toast {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      margin-bottom: 8px;
+      border-left: 4px solid var(--accent);
+      box-shadow: var(--shadow);
+      animation: slideInRight 0.3s ease;
+      font-size: 14px;
+      max-width: 320px;
+    }
+    .toast.success { border-left-color: var(--success); }
+    .toast.warning { border-left-color: var(--warning); }
+    .toast.error { border-left-color: var(--danger); }
+    @keyframes slideInRight { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">🎧</div>
+    <span>Soundcore AI</span>
+  </div>
+  <div class="device-status-mini">
+    <div class="status-dot" id="headerStatusDot"></div>
+    <span id="headerStatusText">未连接</span>
+  </div>
+</header>
+
+<!-- Navigation -->
+<nav class="nav-tabs" id="navTabs">
+  <button class="nav-tab active" data-tab="connection" onclick="switchTab('connection')">🔗 设备连接</button>
+  <button class="nav-tab" data-tab="monitor" onclick="switchTab('monitor')" disabled>📶 设备监控</button>
+  <button class="nav-tab" data-tab="capture" onclick="switchTab('capture')" disabled>🎙️ 语音采集</button>
+  <button class="nav-tab" data-tab="ai" onclick="switchTab('ai')" disabled>🧠 AI处理</button>
+  <button class="nav-tab" data-tab="results" onclick="switchTab('results')" disabled>💬 结果展示</button>
+  <button class="nav-tab" data-tab="report" onclick="switchTab('report')" disabled>📈 性能报告</button>
+</nav>
+
+<!-- Main Content -->
+<main class="main-content">
+
+  <!-- ===== TAB: Connection ===== -->
+  <div class="tab-panel active" id="panel-connection">
+    <div class="card">
+      <div class="card-title">🔗 设备连接</div>
+      <div class="scan-area" id="scanArea">
+        <div class="scan-animation" id="scanAnimation" style="display: none;">
+          <div class="scan-circle">🎧</div>
+          <div class="scan-ring"></div>
+          <div class="scan-ring"></div>
+          <div class="scan-ring"></div>
+        </div>
+        <p id="scanStatus" style="margin-bottom: 20px; color: var(--text-secondary);">点击下方按钮扫描附近设备</p>
+        <button class="btn btn-primary" id="scanBtn" onclick="startScan()">
+          🔍 扫描设备
+        </button>
+      </div>
+      <ul class="device-list" id="deviceList"></ul>
+    </div>
+  </div>
+
+  <!-- ===== TAB: Monitor ===== -->
+  <div class="tab-panel" id="panel-monitor">
+    <div id="alertContainer"></div>
+    <div class="card">
+      <div class="card-title">📶 设备状态</div>
+      <div class="status-grid">
+        <div class="status-item">
+          <div class="status-icon">🔋</div>
+          <div class="status-value status-good" id="batteryValue">85%</div>
+          <div class="status-label">电量</div>
+        </div>
+        <div class="status-item">
+          <div class="status-icon">📡</div>
+          <div class="status-value status-good" id="signalValue">-45dBm</div>
+          <div class="status-label">信号强度</div>
+        </div>
+        <div class="status-item">
+          <div class="status-icon">💻</div>
+          <div class="status-value" id="firmwareValue" style="font-size: 14px;">v2.3.1</div>
+          <div class="status-label">固件版本</div>
+        </div>
+        <div class="status-item">
+          <div class="status-icon">🌡️</div>
+          <div class="status-value status-good" id="tempValue">36°C</div>
+          <div class="status-label">耳机温度</div>
+        </div>
+        <div class="status-item">
+          <div class="status-icon">⚡</div>
+          <div class="status-value status-good" id="latencyValue">45ms</div>
+          <div class="status-label">音频延迟</div>
+        </div>
+        <div class="status-item">
+          <div class="status-icon">✅</div>
+          <div class="status-value status-good" id="healthValue">优秀</div>
+          <div class="status-label">健康状态</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: Capture ===== -->
+  <div class="tab-panel" id="panel-capture">
+    <div class="card">
+      <div class="card-title">🎙️ 语音采集</div>
+      <div class="waveform-container">
+        <canvas id="waveformCanvas"></canvas>
+      </div>
+      <div class="recording-timer" id="recordingTimer">00:00</div>
+      <div class="recording-controls">
+        <button class="mic-btn" id="micBtn" onclick="toggleRecording()">🎤</button>
+      </div>
+      <div class="audio-params">
+        <div class="param-item">
+          <div class="param-label">采样率</div>
+          <div class="param-value" id="sampleRate">48 kHz</div>
+        </div>
+        <div class="param-item">
+          <div class="param-label">位深度</div>
+          <div class="param-value" id="bitDepth">16 bit</div>
+        </div>
+        <div class="param-item">
+          <div class="param-label">声道</div>
+          <div class="param-value" id="channels">立体声</div>
+        </div>
+        <div class="param-item">
+          <div class="param-label">降噪</div>
+          <div class="param-value" id="noiseReduction" style="color: var(--success);">已开启</div>
+        </div>
+        <div class="param-item">
+          <div class="param-label">音量峰值</div>
+          <div class="param-value" id="peakVolume">-12 dB</div>
+        </div>
+        <div class="param-item">
+          <div class="param-label">清晰度</div>
+          <div class="param-value" id="clarityScore">--</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: AI Processing ===== -->
+  <div class="tab-panel" id="panel-ai">
+    <div class="card">
+      <div class="card-title">🧠 AI 智能处理</div>
+      <div class="mode-selector">
+        <div class="mode-option selected" onclick="selectMode(this, 'standard')">
+          <div class="mode-name">标准模式</div>
+          <div class="mode-desc">快速响应，日常使用</div>
+        </div>
+        <div class="mode-option" onclick="selectMode(this, 'precision')">
+          <div class="mode-name">高精度模式</div>
+          <div class="mode-desc">更准确，耗时稍长</div>
+        </div>
+      </div>
+      <div class="pipeline" id="pipeline">
+        <div class="pipeline-step" id="step-stt">
+          <div class="step-icon">🎤</div>
+          <div class="step-label">语音转写</div>
+        </div>
+        <div class="pipeline-step" id="step-translate">
+          <div class="step-icon">🌐</div>
+          <div class="step-label">实时翻译</div>
+        </div>
+        <div class="pipeline-step" id="step-summary">
+          <div class="step-icon">📝</div>
+          <div class="step-label">摘要生成</div>
+        </div>
+      </div>
+      <div id="aiProgressArea">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+          <span style="font-size: 13px; color: var(--text-secondary);">处理进度</span>
+          <span style="font-size: 13px; font-weight: 600;" id="aiProgressText">0%</span>
+        </div>
+        <div class="confidence-bar">
+          <div class="confidence-fill" id="aiProgressBar"></div>
+        </div>
+      </div>
+      <div style="margin-top: 24px;">
+        <button class="btn btn-primary" id="aiProcessBtn" onclick="startAIProcess()" disabled>
+          🚀 开始处理
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: Results ===== -->
+  <div class="tab-panel" id="panel-results">
+    <div class="card">
+      <div class="result-tabs">
+        <button class="result-tab active" onclick="switchResultTab('transcript')">转写文本</button>
+        <button class="result-tab" onclick="switchResultTab('translation')">翻译对照</button>
+        <button class="result-tab" onclick="switchResultTab('summary')">智能摘要</button>
+      </div>
+
+      <div class="result-content active" id="result-transcript">
+        <div class="transcript-text" id="transcriptText">
+          <div class="empty-state">
+            <div class="icon">📝</div>
+            <h4>暂无转写内容</h4>
+            <p>完成录音和AI处理后，转写结果将显示在这里</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-content" id="result-translation">
+        <div id="translationContent">
+          <div class="empty-state">
+            <div class="icon">🌐</div>
+            <h4>暂无翻译内容</h4>
+            <p>完成AI处理后，翻译结果将显示在这里</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-content" id="result-summary">
+        <div id="summaryContent">
+          <div class="empty-state">
+            <div class="icon">📋</div>
+            <h4>暂无摘要内容</h4>
+            <p>完成AI处理后，摘要结果将显示在这里</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-bar" id="actionBar" style="display: none;">
+        <button class="btn btn-secondary btn-sm" onclick="copyText()">📋 复制</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportText()">📤 导出</button>
+        <button class="btn btn-secondary btn-sm" onclick="shareText()">🔗 分享</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: Report ===== -->
+  <div class="tab-panel" id="panel-report">
+    <div class="card">
+      <div class="card-title">📈 性能报告</div>
+      <div class="chart-container">
+        <h5 style="margin-bottom: 16px;">响应时间 (ms)</h5>
+        <div class="chart-bar-group" id="responseTimeChart"></div>
+      </div>
+      <div class="chart-container">
+        <h5 style="margin-bottom: 16px;">识别准确率</h5>
+        <div class="chart-bar-group" id="accuracyChart"></div>
+      </div>
+      <div class="chart-container">
+        <h5 style="margin-bottom: 16px;">AI 处理耗时 (ms)</h5>
+        <div class="chart-bar-group" id="aiTimeChart"></div>
+      </div>
+      <div id="insightsContainer"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Pairing Modal -->
+<div class="modal-overlay" id="pairingModal">
+  <div class="modal">
+    <h3>🔐 设备配对</h3>
+    <p>请确认耳机显示的配对码是否一致</p>
+    <div class="pairing-code" id="pairingCode">000000</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="cancelPairing()">取消</button>
+      <button class="btn btn-primary" onclick="confirmPairing()">确认配对</button>
+    </div>
+  </div>
+</div>
+
+<!-- Processing Overlay -->
+<div class="processing-overlay" id="processingOverlay">
+  <div class="processing-spinner"></div>
+  <div class="processing-text" id="processingText">正在处理...</div>
+  <div class="processing-sub" id="processingSub">请稍候</div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ========== App State ==========
+const state = {
+  connected: false,
+  connecting: false,
+  recording: false,
+  recordingTime: 0,
+  recordingInterval: null,
+  audioContext: null,
+  analyser: null,
+  microphone: null,
+  animationId: null,
+  processed: false,
+  mode: 'standard',
+  devices: [
+    { id: 'earbuds_001', name: 'Soundcore Liberty 4', type: 'bluetooth', battery: 85, signal: -45, firmware: 'v2.3.1' },
+    { id: 'earbuds_002', name: 'Soundcore Space A40', type: 'bluetooth', battery: 62, signal: -62, firmware: 'v2.1.0' },
+    { id: 'earbuds_003', name: 'Soundcore Life P3', type: 'bluetooth', battery: 40, signal: -78, firmware: 'v1.8.5' }
+  ],
+  scenarios: {
+    meeting: {
+      text: '今天我们讨论一下Q1的产品规划，主要集中在新一代AI耳机的功能设计上。首先关于语音助手的响应速度，我们需要优化到200毫秒以内。其次在会议场景下的降噪算法也需要升级，特别是在多人对话的环境中。关于翻译功能，我们希望支持至少12种语言的实时互译。最后，智能摘要功能需要能够自动识别关键信息并生成结构化的会议纪要。',
+      translation: '今天我们讨论了Q1产品规划，聚焦于新一代AI耳机的功能设计。语音助手响应速度需优化至200ms以内。会议场景降噪算法需升级，尤其是多人对话环境。翻译功能需支持至少12种语言实时互译。智能摘要功能需自动识别关键信息并生成结构化会议纪要。',
+      summary: ['Q1产品规划聚焦AI耳机功能设计', '语音助手响应速度目标：200ms以内', '多人会议场景降噪算法需升级', '翻译功能支持12种以上语言实时互译', '智能摘要自动生成结构化会议纪要']
+    },
+    learning: {
+      text: 'Hello, today we will learn about artificial intelligence and its applications in daily life. AI has become an integral part of modern technology, from voice assistants to autonomous vehicles. Machine learning, a subset of AI, enables computers to learn from data without being explicitly programmed. Deep learning, which uses neural networks with multiple layers, has revolutionized image recognition and natural language processing.',
+      translation: '大家好，今天我们将学习人工智能及其在日常生活中的应用。AI已成为现代技术的重要组成部分，从语音助手到自动驾驶汽车。机器学习作为AI的一个子集，使计算机能够从数据中学习而无需显式编程。深度学习使用多层神经网络，已经彻底改变了图像识别和自然语言处理领域。',
+      summary: ['主题：人工智能及其日常应用', 'AI是现代技术的重要组成部分', '机器学习使计算机能从数据中学习', '深度学习革新了图像识别和NLP领域']
+    }
+  },
+  currentScenario: 'meeting',
+  performanceData: []
+};
+
+// ========== Tab Switching ==========
+function switchTab(tabName) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + tabName).classList.add('active');
+  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+}
+
+function enableTab(tabName) {
+  const tab = document.querySelector(`[data-tab="${tabName}"]`);
+  if (tab) tab.disabled = false;
+}
+
+// ========== Toast Notifications ==========
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3500);
+}
+
+// ========== Device Connection ==========
+function startScan() {
+  const btn = document.getElementById('scanBtn');
+  const scanAnim = document.getElementById('scanAnimation');
+  const scanStatus = document.getElementById('scanStatus');
+
+  btn.disabled = true;
+  btn.innerHTML = '⏳ 扫描中...';
+  scanAnim.style.display = 'block';
+  scanStatus.textContent = '正在搜索附近蓝牙设备...';
+
+  // Simulate device discovery
+  const deviceList = document.getElementById('deviceList');
+  deviceList.innerHTML = '';
+
+  state.devices.forEach((device, index) => {
+    setTimeout(() => {
+      const signalBars = generateSignalBars(device.signal);
+      const item = document.createElement('li');
+      item.className = 'device-item';
+      item.innerHTML = `
+        <div class="device-info">
+          <div class="device-icon">🎧</div>
+          <div>
+            <div class="device-name">${device.name}</div>
+            <div class="device-meta">${device.type.toUpperCase()} · 电量 ${device.battery}% · ${device.firmware}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="signal-bars">${signalBars}</div>
+          <button class="btn btn-primary btn-sm" onclick="connectDevice(${index})">连接</button>
+        </div>
+      `;
+      deviceList.appendChild(item);
+      scanStatus.textContent = `已发现 ${index + 1} 台设备`;
+    }, (index + 1) * 800);
+  });
+
+  setTimeout(() => {
+    scanAnim.style.display = 'none';
+    btn.innerHTML = '🔄 重新扫描';
+    btn.disabled = false;
+    scanStatus.textContent = '扫描完成，选择设备进行连接';
+  }, state.devices.length * 800 + 500);
+}
+
+function generateSignalBars(signal) {
+  const levels = signal > -50 ? 4 : signal > -60 ? 3 : signal > -70 ? 2 : 1;
+  let html = '';
+  for (let i = 0; i < 4; i++) {
+    html += `<div class="signal-bar ${i < levels ? 'active' : ''}" style="height: ${6 + i * 4}px;"></div>`;
+  }
+  return html;
+}
+
+function connectDevice(index) {
+  const device = state.devices[index];
+  const modal = document.getElementById('pairingModal');
+  const code = Math.floor(100000 + Math.random() * 900000);
+  document.getElementById('pairingCode').textContent = code;
+  modal.classList.add('show');
+
+  window._pendingDevice = device;
+}
+
+function confirmPairing() {
+  document.getElementById('pairingModal').classList.remove('show');
+  const device = window._pendingDevice;
+
+  state.connected = true;
+  state.connecting = false;
+
+  // Update header status
+  document.getElementById('headerStatusDot').classList.add('connected');
+  document.getElementById('headerStatusText').textContent = device.name;
+
+  // Enable all tabs
+  ['monitor', 'capture', 'ai', 'results', 'report'].forEach(enableTab);
+
+  showToast(`✅ ${device.name} 连接成功！`, 'success');
+
+  // Initialize monitor
+  initMonitor(device);
+
+  // Switch to monitor tab
+  switchTab('monitor');
+
+  // Start audio monitor
+  initWaveform();
+}
+
+function cancelPairing() {
+  document.getElementById('pairingModal').classList.remove('show');
+}
+
+// ========== Device Monitor ==========
+function initMonitor(device) {
+  updateMonitorValues(device);
+  setInterval(() => updateMonitorValues(device), 3000);
+
+  // Check for alerts
+  checkAlerts(device);
+}
+
+function updateMonitorValues(device) {
+  // Simulate slight variations
+  const battery = Math.max(0, device.battery + Math.floor(Math.random() * 3 - 1));
+  const signal = device.signal + Math.floor(Math.random() * 6 - 3);
+  const temp = 36 + Math.floor(Math.random() * 4 - 2);
+  const latency = 45 + Math.floor(Math.random() * 10 - 5);
+
+  document.getElementById('batteryValue').textContent = battery + '%';
+  document.getElementById('signalValue').textContent = signal + 'dBm';
+  document.getElementById('tempValue').textContent = temp + '°C';
+  document.getElementById('latencyValue').textContent = latency + 'ms';
+
+  // Color coding
+  const batteryEl = document.getElementById('batteryValue');
+  batteryEl.className = 'status-value ' + (battery > 50 ? 'status-good' : battery > 20 ? 'status-warn' : 'status-bad');
+
+  const signalEl = document.getElementById('signalValue');
+  signalEl.className = 'status-value ' + (signal > -60 ? 'status-good' : signal > -70 ? 'status-warn' : 'status-bad');
+
+  const tempEl = document.getElementById('tempValue');
+  tempEl.className = 'status-value ' + (temp < 40 ? 'status-good' : temp < 45 ? 'status-warn' : 'status-bad');
+}
+
+function checkAlerts(device) {
+  const container = document.getElementById('alertContainer');
+  container.innerHTML = '';
+
+  if (device.battery < 50) {
+    showAlert('warning', '⚠️ 电量偏低，建议及时充电');
+  }
+  if (device.signal < -70) {
+    showAlert('error', '📡 信号较弱，请靠近设备');
+  }
+  if (device.firmware < 'v2.3.0') {
+    showAlert('warning', '💻 固件版本过旧，建议更新');
+  }
+}
+
+function showAlert(type, message) {
+  const container = document.getElementById('alertContainer');
+  const alert = document.createElement('div');
+  alert.className = `alert-banner show ${type}`;
+  alert.innerHTML = `<span>${message}</span>`;
+  container.appendChild(alert);
+}
+
+// ========== Audio Capture ==========
+async function initWaveform() {
+  const canvas = document.getElementById('waveformCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = canvas.offsetHeight * 2;
+
+  function drawIdle() {
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    const time = Date.now() / 1000;
+    for (let x = 0; x < canvas.width; x++) {
+      const y = canvas.height / 2 + Math.sin(x * 0.02 + time * 2) * 5;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    if (!state.recording) {
+      requestAnimationFrame(drawIdle);
+    }
+  }
+  drawIdle();
+}
+
+async function toggleRecording() {
+  if (state.recording) {
+    stopRecording();
+  } else {
+    startRecording();
+  }
+}
+
+async function startRecording() {
+  try {
+    state.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    state.microphone = state.audioContext.createMediaStreamSource(stream);
+    state.analyser = state.audioContext.createAnalyser();
+    state.analyser.fftSize = 2048;
+    state.microphone.connect(state.analyser);
+
+    state.recording = true;
+    const btn = document.getElementById('micBtn');
+    btn.classList.add('recording');
+    btn.innerHTML = '⏹️';
+
+    // Start timer
+    state.recordingTime = 0;
+    state.recordingInterval = setInterval(() => {
+      state.recordingTime++;
+      const mins = String(Math.floor(state.recordingTime / 60)).padStart(2, '0');
+      const secs = String(state.recordingTime % 60).padStart(2, '0');
+      document.getElementById('recordingTimer').textContent = `${mins}:${secs}`;
+    }, 1000);
+
+    // Enable AI process button
+    document.getElementById('aiProcessBtn').disabled = false;
+
+    drawWaveform();
+    showToast('🎤 开始录音', 'info');
+
+  } catch (err) {
+    console.error('麦克风访问失败:', err);
+    showToast('❌ 无法访问麦克风，请检查权限', 'error');
+    // Fallback: simulate recording
+    simulateRecording();
+  }
+}
+
+function drawWaveform() {
+  if (!state.recording || !state.analyser) return;
+
+  const canvas = document.getElementById('waveformCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = canvas.offsetHeight * 2;
+
+  const bufferLength = state.analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  state.analyser.getByteTimeDomainData(dataArray);
+
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#00d4ff';
+  ctx.beginPath();
+
+  const sliceWidth = canvas.width / bufferLength;
+  let x = 0;
+
+  let sum = 0;
+  for (let i = 0; i < bufferLength; i++) {
+    const v = dataArray[i] / 128.0;
+    sum += Math.abs(v - 1);
+    const y = v * canvas.height / 2;
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+    x += sliceWidth;
+  }
+  ctx.stroke();
+
+  // Update audio params
+  const volume = Math.round(sum / bufferLength * 100);
+  const peakDb = Math.max(-60, -60 + volume);
+  document.getElementById('peakVolume').textContent = peakDb.toFixed(0) + ' dB';
+
+  // Clarity score based on volume consistency
+  const clarity = Math.min(100, Math.round(60 + volume * 0.4));
+  const clarityEl = document.getElementById('clarityScore');
+  clarityEl.textContent = clarity + '%';
+  clarityEl.style.color = clarity > 70 ? 'var(--success)' : clarity > 40 ? 'var(--warning)' : 'var(--danger)';
+
+  state.animationId = requestAnimationFrame(drawWaveform);
+}
+
+function simulateRecording() {
+  state.recording = true;
+  const btn = document.getElementById('micBtn');
+  btn.classList.add('recording');
+  btn.innerHTML = '⏹️';
+
+  state.recordingTime = 0;
+  state.recordingInterval = setInterval(() => {
+    state.recordingTime++;
+    const mins = String(Math.floor(state.recordingTime / 60)).padStart(2, '0');
+    const secs = String(state.recordingTime % 60).padStart(2, '0');
+    document.getElementById('recordingTimer').textContent = `${mins}:${secs}`;
+  }, 1000);
+
+  document.getElementById('aiProcessBtn').disabled = false;
+
+  // Simulated waveform
+  const canvas = document.getElementById('waveformCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * 2;
+  canvas.height = canvas.offsetHeight * 2;
+
+  function drawSimulated() {
+    if (!state.recording) return;
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = '#00d4ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+
+    const time = Date.now() / 1000;
+    for (let x = 0; x < canvas.width; x++) {
+      const amp = 15 + Math.sin(time * 0.5) * 10;
+      const y = canvas.height / 2 + Math.sin(x * 0.015 + time * 3) * amp * Math.sin(time * 0.7);
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Simulated params
+    const volume = Math.round(30 + Math.sin(time) * 20 + 40);
+    document.getElementById('peakVolume').textContent = (-60 + volume).toFixed(0) + ' dB';
+    const clarity = Math.min(100, Math.round(65 + Math.sin(time * 0.3) * 15));
+    const clarityEl = document.getElementById('clarityScore');
+    clarityEl.textContent = clarity + '%';
+    clarityEl.style.color = clarity > 70 ? 'var(--success)' : 'var(--warning)';
+
+    requestAnimationFrame(drawSimulated);
+  }
+  drawSimulated();
+
+  showToast('🎤 开始录音（模拟模式）', 'info');
+}
+
+function stopRecording() {
+  state.recording = false;
+
+  if (state.recordingInterval) {
+    clearInterval(state.recordingInterval);
+    state.recordingInterval = null;
+  }
+  if (state.animationId) {
+    cancelAnimationFrame(state.animationId);
+  }
+  if (state.audioContext) {
+    state.audioContext.close();
+    state.audioContext = null;
+  }
+
+  const btn = document.getElementById('micBtn');
+  btn.classList.remove('recording');
+  btn.innerHTML = '🎤';
+
+  showToast('⏹️ 录音已停止', 'info');
+
+  // Switch to AI tab
+  switchTab('ai');
+}
+
+// ========== AI Processing ==========
+function selectMode(el, mode) {
+  document.querySelectorAll('.mode-option').forEach(m => m.classList.remove('selected'));
+  el.classList.add('selected');
+  state.mode = mode;
+}
+
+async function startAIProcess() {
+  const btn = document.getElementById('aiProcessBtn');
+  btn.disabled = true;
+
+  const steps = ['step-stt', 'step-translate', 'step-summary'];
+  const labels = ['语音转写', '实时翻译', '摘要生成'];
+  const progressBar = document.getElementById('aiProgressBar');
+  const progressText = document.getElementById('aiProgressText');
+
+  const duration = state.mode === 'precision' ? 4000 : 2500;
+  const stepDuration = duration / steps.length;
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = document.getElementById(steps[i]);
+    step.classList.add('active');
+    document.getElementById('processingOverlay').classList.add('show');
+    document.getElementById('processingText').textContent = `正在${labels[i]}...`;
+    document.getElementById('processingSub').textContent = `步骤 ${i + 1} / ${steps.length}`;
+
+    await new Promise(resolve => setTimeout(resolve, stepDuration));
+
+    step.classList.remove('active');
+    step.classList.add('done');
+
+    const progress = Math.round(((i + 1) / steps.length) * 100);
+    progressBar.style.width = progress + '%';
+    progressText.textContent = progress + '%';
+  }
+
+  document.getElementById('processingOverlay').classList.remove('show');
+
+  // Generate results
+  generateResults();
+  state.processed = true;
+
+  // Enable results tab
+  showToast('✅ AI处理完成！', 'success');
+
+  // Switch to results
+  switchTab('results');
+
+  // Record performance data
+  state.performanceData.push({
+    responseTime: Math.round(800 + Math.random() * 400),
+    accuracy: Math.round(88 + Math.random() * 10),
+    aiTime: Math.round(duration),
+    timestamp: Date.now()
+  });
+
+  // Update report
+  updateReport();
+}
+
+function generateResults() {
+  const scenario = state.scenarios[state.currentScenario];
+  const isEnglish = state.currentScenario === 'learning';
+
+  // Transcript
+  const transcriptEl = document.getElementById('transcriptText');
+  if (isEnglish) {
+    const words = scenario.text.split(' ');
+    let html = '';
+    words.forEach(word => {
+      const confidence = Math.random();
+      const level = confidence > 0.8 ? 'high' : confidence > 0.5 ? 'medium' : 'low';
+      html += `<span class="word ${level}">${word}</span> `;
+    });
+    transcriptEl.innerHTML = html;
+  } else {
+    const chars = scenario.text.split('');
+    let html = '';
+    let currentWord = '';
+    chars.forEach(char => {
+      if (char === ' ' || char === '，' || char === '。') {
+        if (currentWord) {
+          const confidence = Math.random();
+          const level = confidence > 0.8 ? 'high' : confidence > 0.5 ? 'medium' : 'low';
+          html += `<span class="word ${level}">${currentWord}</span>`;
+          currentWord = '';
+        }
+        html += char;
+      } else {
+        currentWord += char;
+      }
+    });
+    if (currentWord) {
+      html += `<span class="word high">${currentWord}</span>`;
+    }
+    transcriptEl.innerHTML = html;
+  }
+
+  // Translation
+  const transEl = document.getElementById('translationContent');
+  if (isEnglish) {
+    transEl.innerHTML = `
+      <div class="translation-row">
+        <div class="translation-cell">
+          <div class="lang-label">English (Original)</div>
+          <p style="font-size: 14px; line-height: 1.7;">${scenario.text}</p>
+        </div>
+        <div class="translation-cell">
+          <div class="lang-label">中文 (翻译)</div>
+          <p style="font-size: 14px; line-height: 1.7;">${scenario.translation}</p>
+        </div>
+      </div>
+    `;
+  } else {
+    transEl.innerHTML = `
+      <div class="translation-row">
+        <div class="translation-cell">
+          <div class="lang-label">中文 (原文)</div>
+          <p style="font-size: 14px; line-height: 1.7;">${scenario.text}</p>
+        </div>
+        <div class="translation-cell">
+          <div class="lang-label">English (Translation)</div>
+          <p style="font-size: 14px; line-height: 1.7;">Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  // Summary
+  const summaryEl = document.getElementById('summaryContent');
+  summaryEl.innerHTML = `
+    <div class="summary-card">
+      <h4>📝 智能摘要</h4>
+      <ul class="summary-points">
+        ${scenario.summary.map(s => `<li><span>${s}</span></li>`).join('')}
+      </ul>
+    </div>
+  `;
+
+  // Show action bar
+  document.getElementById('actionBar').style.display = 'flex';
+}
+
+// ========== Result Tab Switching ==========
+function switchResultTab(tabName) {
+  document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.result-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('result-' + tabName).classList.add('active');
+}
+
+// ========== Actions ==========
+function copyText() {
+  const text = document.getElementById('transcriptText').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast('📋 已复制到剪贴板', 'success'));
+}
+
+function exportText() {
+  const scenario = state.scenarios[state.currentScenario];
+  const content = `转写内容：\n${scenario.text}\n\n翻译：\n${scenario.translation}\n\n摘要：\n${scenario.summary.join('\n')}`;
+  const blob = new Blob([content], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ai-earbud-result.txt';
+  a.click();
+  showToast('📤 已导出文件', 'success');
+}
+
+function shareText() {
+  showToast('🔗 分享链接已生成（演示功能）', 'info');
+}
+
+// ========== Performance Report ==========
+function updateReport() {
+  const data = state.performanceData;
+  if (!data.length) return;
+
+  // Response time chart
+  const rtChart = document.getElementById('responseTimeChart');
+  rtChart.innerHTML = data.map((d, i) => `
+    <div class="chart-bar-item">
+      <div class="chart-bar-value">${d.responseTime}</div>
+      <div class="chart-bar" style="height: ${d.responseTime / 12}%;"></div>
+      <div class="chart-bar-label">#${i + 1}</div>
+    </div>
+  `).join('');
+
+  // Accuracy chart
+  const accChart = document.getElementById('accuracyChart');
+  accChart.innerHTML = data.map((d, i) => `
+    <div class="chart-bar-item">
+      <div class="chart-bar-value">${d.accuracy}%</div>
+      <div class="chart-bar" style="height: ${d.accuracy}%; background: linear-gradient(to top, #009966, #00e676);"></div>
+      <div class="chart-bar-label">#${i + 1}</div>
+    </div>
+  `).join('');
+
+  // AI time chart
+  const aiChart = document.getElementById('aiTimeChart');
+  aiChart.innerHTML = data.map((d, i) => `
+    <div class="chart-bar-item">
+      <div class="chart-bar-value">${d.aiTime}ms</div>
+      <div class="chart-bar" style="height: ${d.aiTime / 50}%; background: linear-gradient(to top, #cc6600, #ffab00);"></div>
+      <div class="chart-bar-label">#${i + 1}</div>
+    </div>
+  `).join('');
+
+  // Insights
+  const insights = document.getElementById('insightsContainer');
+  const lastData = data[data.length - 1];
+  insights.innerHTML = `
+    <div class="insight-card">
+      <h5>💡 体验分析</h5>
+      <p>最近一次识别准确率为 <strong>${lastData.accuracy}%</strong>，响应时间 <strong>${lastData.responseTime}ms</strong>。${lastData.accuracy > 90 ? '识别效果优秀，系统运行良好。' : '建议在安静环境下使用，可有效提升识别准确率。'}</p>
+    </div>
+    <div class="insight-card">
+      <h5>🎯 优化建议</h5>
+      <p>• 建议在低噪环境中使用，识别效果最优<br>
+         • 语速控制在 150-180 词/分钟时识别最准确<br>
+         • 保持耳机与设备距离在 3 米以内<br>
+         • 定期更新固件以获得最佳性能</p>
+    </div>
+  `;
+}
+
+// ========== Init ==========
+window.addEventListener('load', () => {
+  initWaveform();
+});
+</script>
+
+</body>
+</html>
