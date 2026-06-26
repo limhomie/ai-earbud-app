@@ -35,6 +35,12 @@
   border-color: var(--danger);
   animation: pulse 1s infinite;
 }
+.mic-btn.paused {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #000;
+}
+/* Paused state: no pulse animation, distinct from recording */
 .recording-timer {
   text-align: center;
   font-size: 24px;
@@ -42,6 +48,10 @@
   font-family: monospace;
   margin-bottom: 16px;
   color: var(--accent);
+}
+.recording-timer.paused-timer {
+  color: var(--warning);
+  animation: pulse 2s infinite;
 }
 .audio-params {
   display: grid;
