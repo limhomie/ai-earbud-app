@@ -486,13 +486,40 @@
       border-top: none;
       border-left: none;
       border-right: none;
+      transition: var(--transition);
     }
+    .result-tab:hover { color: var(--text-primary); }
     .result-tab.active {
       color: var(--accent);
       border-bottom-color: var(--accent);
     }
     .result-content { display: none; }
     .result-content.active { display: block; }
+
+    /* ========== Scenario Selector ========== */
+    .scenario-selector {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .scenario-btn {
+      padding: 10px 20px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .scenario-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+    .scenario-btn.active {
+      border-color: var(--accent);
+      background: rgba(0, 212, 255, 0.1);
+      color: var(--accent);
+    }
 
     .transcript-text {
       background: var(--bg-secondary);
@@ -893,6 +920,11 @@
   <!-- ===== TAB: Results ===== -->
   <div class="tab-panel" id="panel-results">
     <div class="card">
+      <div class="card-title">💬 处理结果</div>
+      <div class="scenario-selector">
+        <button class="scenario-btn active" onclick="switchScenario('meeting')">📋 会议场景</button>
+        <button class="scenario-btn" onclick="switchScenario('learning')">📚 学习场景</button>
+      </div>
       <div class="result-tabs">
         <button class="result-tab active" onclick="switchResultTab('transcript')">转写文本</button>
         <button class="result-tab" onclick="switchResultTab('translation')">翻译对照</button>
@@ -959,6 +991,11 @@
 
 </main>
 
+<!-- Footer -->
+<footer style="text-align: center; padding: 20px; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border);">
+  <p>Soundcore AI Earbuds Simulator v0.1.0 &copy; 2026 Anker Innovations</p>
+</footer>
+
 <!-- Pairing Modal -->
 <div class="modal-overlay" id="pairingModal">
   <div class="modal">
@@ -1013,6 +1050,18 @@ const state = {
       summary: ['主题：人工智能及其日常应用', 'AI是现代技术的重要组成部分', '机器学习使计算机能从数据中学习', '深度学习革新了图像识别和NLP领域']
     }
   },
+  scenarioTexts: {
+    meeting: {
+      text: '今天我们讨论一下Q1的产品规划，主要集中在新一代AI耳机的功能设计上。首先关于语音助手的响应速度，我们需要优化到200毫秒以内。其次在会议场景下的降噪算法也需要升级，特别是在多人对话的环境中。关于翻译功能，我们希望支持至少12种语言的实时互译。最后，智能摘要功能需要能够自动识别关键信息并生成结构化的会议纪要。',
+      translation: '今天我们讨论了Q1产品规划，聚焦于新一代AI耳机的功能设计。语音助手响应速度需优化至200ms以内。会议场景降噪算法需升级，尤其是多人对话环境。翻译功能需支持至少12种语言实时互译。智能摘要功能需自动识别关键信息并生成结构化会议纪要。',
+      summary: ['Q1产品规划聚焦AI耳机功能设计', '语音助手响应速度目标：200ms以内', '多人会议场景降噪算法需升级', '翻译功能支持12种以上语言实时互译', '智能摘要自动生成结构化会议纪要']
+    },
+    learning: {
+      text: 'Hello, today we will learn about artificial intelligence and its applications in daily life. AI has become an integral part of modern technology, from voice assistants to autonomous vehicles. Machine learning, a subset of AI, enables computers to learn from data without being explicitly programmed. Deep learning, which uses neural networks with multiple layers, has revolutionized image recognition and natural language processing.',
+      translation: '大家好，今天我们将学习人工智能及其在日常生活中的应用。AI已成为现代技术的重要组成部分，从语音助手到自动驾驶汽车。机器学习作为AI的一个子集，使计算机能够从数据中学习而无需显式编程。深度学习使用多层神经网络，已经彻底改变了图像识别和自然语言处理领域。',
+      summary: ['主题：人工智能及其日常应用', 'AI是现代技术的重要组成部分', '机器学习使计算机能从数据中学习', '深度学习革新了图像识别和NLP领域']
+    }
+  },
   currentScenario: 'meeting',
   performanceData: []
 };
@@ -1022,12 +1071,24 @@ function switchTab(tabName) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
   document.getElementById('panel-' + tabName).classList.add('active');
-  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+  const tab = document.querySelector(`[data-tab="${tabName}"]`);
+  if (tab) tab.classList.add('active');
 }
 
 function enableTab(tabName) {
   const tab = document.querySelector(`[data-tab="${tabName}"]`);
   if (tab) tab.disabled = false;
+}
+
+// ========== Scenario Switching ==========
+function switchScenario(scenarioName) {
+  state.currentScenario = scenarioName;
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  // Regenerate results with new scenario
+  if (state.processed) {
+    generateResults();
+  }
 }
 
 // ========== Toast Notifications ==========
@@ -1539,7 +1600,13 @@ function generateResults() {
 function switchResultTab(tabName) {
   document.querySelectorAll('.result-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.result-content').forEach(c => c.classList.remove('active'));
-  event.target.classList.add('active');
+  // Use event.currentTarget instead of global event
+  const tabs = document.querySelectorAll('.result-tab');
+  tabs.forEach(t => {
+    if (t.textContent.includes(tabName === 'transcript' ? '转写' : tabName === 'translation' ? '翻译' : '摘要')) {
+      t.classList.add('active');
+    }
+  });
   document.getElementById('result-' + tabName).classList.add('active');
 }
 
