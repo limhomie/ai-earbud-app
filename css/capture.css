@@ -1,0 +1,57 @@
+/* ===== Module 3: Audio Capture ===== */
+.waveform-container {
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  height: 120px;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+#waveformCanvas { width: 100%; height: 100%; }
+
+.recording-controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.mic-btn {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  color: var(--text-primary);
+  font-size: 28px;
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mic-btn:hover { border-color: var(--accent); }
+.mic-btn.recording {
+  background: var(--danger);
+  border-color: var(--danger);
+  animation: pulse 1s infinite;
+}
+.recording-timer {
+  text-align: center;
+  font-size: 24px;
+  font-weight: 700;
+  font-family: monospace;
+  margin-bottom: 16px;
+  color: var(--accent);
+}
+.audio-params {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+}
+.param-item {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.param-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+.param-value { font-size: 14px; font-weight: 600; }

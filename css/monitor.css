@@ -1,0 +1,35 @@
+/* ===== Module 2: Device Monitor ===== */
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+}
+.status-item {
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+}
+.status-icon { font-size: 28px; margin-bottom: 8px; }
+.status-value { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+.status-label { font-size: 12px; color: var(--text-secondary); }
+.status-good { color: var(--success); }
+.status-warn { color: var(--warning); }
+.status-bad { color: var(--danger); }
+
+.alert-banner {
+  background: rgba(255, 82, 82, 0.1);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  animation: slideIn 0.3s ease;
+}
+.alert-banner.show { display: flex; }
+.alert-banner.warning {
+  background: rgba(255, 171, 0, 0.1);
+  border-color: var(--warning);
+}
