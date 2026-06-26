@@ -24,6 +24,9 @@ async function startAIProcess() {
   const btn = document.getElementById('aiProcessBtn');
   btn.disabled = true;
 
+  // Track user action
+  if (typeof trackAction === 'function') trackAction('aiProcessCount');
+
   // Reset all steps to idle state
   const steps = ['step-stt', 'step-translate', 'step-summary'];
   const labels = ['语音转写', '实时翻译', '摘要生成'];

@@ -311,6 +311,11 @@
         <h5 style="margin-bottom: 16px;">AI 处理耗时 (ms)</h5>
         <div class="chart-bar-group" id="aiTimeChart"></div>
       </div>
+      <div class="chart-container">
+        <h5 style="margin-bottom: 16px;">用户操作统计</h5>
+        <div class="chart-bar-group" id="userActionsChart"></div>
+      </div>
+      </div>
       <div id="insightsContainer"></div>
     </div>
   </div>
@@ -368,6 +373,14 @@ const state = {
   mode: 'standard',
   currentScenario: 'meeting',
   performanceData: [],
+  // User operation counters
+  userActions: {
+    recordingCount: 0,
+    aiProcessCount: 0,
+    scenarioSwitchCount: 0,
+    translationEditCount: 0,
+    totalClickCount: 0
+  },
   _pendingReconnectDevice: null,
   _currentDevice: null,
   devices: [
@@ -411,6 +424,13 @@ function showToast(message, type = 'info') {
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 3500);
 }
+
+// Track total clicks globally
+document.addEventListener('click', function() {
+  if (state.userActions) {
+    state.userActions.totalClickCount++;
+  }
+});
 </script>
 
 <!-- Module Scripts (loaded in order) -->

@@ -17,6 +17,10 @@ function switchScenario(scenarioName) {
   state.currentScenario = scenarioName;
   document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
+
+  // Track user action
+  if (typeof trackAction === 'function') trackAction('scenarioSwitchCount');
+
   // Regenerate results with new scenario
   if (state.processed) {
     generateResults();
@@ -160,6 +164,9 @@ function toggleEditTranslation(btnEl) {
     if (hintEl) hintEl.style.display = 'block';
     if (resetBtn) resetBtn.style.display = 'inline-block';
     showToast('✏️ 已解锁，可直接修改翻译', 'info');
+
+    // Track user action
+    if (typeof trackAction === 'function') trackAction('translationEditCount');
   }
 }
 

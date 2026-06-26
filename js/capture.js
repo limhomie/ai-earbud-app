@@ -102,6 +102,9 @@ async function startRecording() {
     drawWaveform();
     showToast('🎙️ 开始录音', 'info');
 
+    // Track user action
+    if (typeof trackAction === 'function') trackAction('recordingCount');
+
   } catch (err) {
     console.error('麦克风访问失败:', err);
     showToast('❌ 无法访问麦克风，使用模拟模式', 'error');
