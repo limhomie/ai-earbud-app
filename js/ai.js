@@ -24,29 +24,83 @@ async function startAIProcess() {
   const btn = document.getElementById('aiProcessBtn');
   btn.disabled = true;
 
+  // Reset all steps to idle state
   const steps = ['step-stt', 'step-translate', 'step-summary'];
   const labels = ['语音转写', '实时翻译', '摘要生成'];
   const progressBar = document.getElementById('aiProgressBar');
   const progressText = document.getElementById('aiProgressText');
 
+  // Reset previous states
+  steps.forEach(function(id) {
+    var step = document.getElementById(id);
+    step.classList.remove('active', 'done', 'flash');
+  });
+  progressBar.style.width = '0%';
+  progressText.textContent = '0%';
+
+  // Hide confidence display for new run
+  var confidenceDisplay = document.getElementById('confidenceDisplay');
+  if (confidenceDisplay) confidenceDisplay.style.display = 'none';
+
   const duration = state.mode === 'precision' ? 4000 : 2500;
   const stepDuration = duration / steps.length;
 
+  // Track per-step confidence values
+  var stepConfidences = [];
+
   for (let i = 0; i < steps.length; i++) {
     const step = document.getElementById(steps[i]);
+
+    // Add blink effect when switching to this step (skip for first step)
+    if (i > 0) {
+      step.classList.add('blink');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      step.classList.remove('blink');
+    }
+
+    // Activate step
     step.classList.add('active');
     document.getElementById('processingOverlay').classList.add('show');
     document.getElementById('processingText').textContent = `正在${labels[i]}...`;
     document.getElementById('processingSub').textContent = `步骤 ${i + 1} / ${steps.length}`;
 
-    await new Promise(resolve => setTimeout(resolve, stepDuration));
+    // Smooth progress animation during step execution
+    const startProgress = (i / steps.length) * 100;
+    const endProgress = ((i + 1) / steps.length) * 100;
+    const animationStart = Date.now();
 
+    await new Promise(resolve => {
+      const animateProgress = function() {
+        const elapsed = Date.now() - animationStart;
+        const stepProgress = Math.min(elapsed / stepDuration, 1);
+        const currentProgress = startProgress + (endProgress - startProgress) * stepProgress;
+        progressBar.style.width = Math.round(currentProgress) + '%';
+        progressText.textContent = Math.round(currentProgress) + '%';
+
+        if (stepProgress < 1) {
+          requestAnimationFrame(animateProgress);
+        } else {
+          resolve();
+        }
+      };
+      requestAnimationFrame(animateProgress);
+    });
+
+    // Generate per-step confidence value
+    var stepConfidence = generateStepConfidence(state.mode);
+    stepConfidences.push(stepConfidence);
+
+    // Flash transition effect
     step.classList.remove('active');
+    step.classList.add('flash');
+    await new Promise(resolve => setTimeout(resolve, 400));
+    step.classList.remove('flash');
     step.classList.add('done');
 
-    const progress = Math.round(((i + 1) / steps.length) * 100);
-    progressBar.style.width = progress + '%';
-    progressText.textContent = progress + '%';
+    // Ensure final progress for this step
+    const finalProgress = Math.round(((i + 1) / steps.length) * 100);
+    progressBar.style.width = finalProgress + '%';
+    progressText.textContent = finalProgress + '%';
   }
 
   document.getElementById('processingOverlay').classList.remove('show');
@@ -54,6 +108,10 @@ async function startAIProcess() {
   // Generate results
   generateResults();
   state.processed = true;
+
+  // Calculate and display overall confidence
+  var overallConfidence = generateConfidence(state.mode, stepConfidences);
+  displayConfidence(overallConfidence);
 
   // Enable results tab
   showToast('✅ AI处理完成！', 'success');
@@ -64,13 +122,63 @@ async function startAIProcess() {
   // Record performance data
   state.performanceData.push({
     responseTime: Math.round(800 + Math.random() * 400),
-    accuracy: Math.round(88 + Math.random() * 10),
+    accuracy: Math.round(overallConfidence),
     aiTime: Math.round(duration),
     timestamp: Date.now()
   });
 
   // Update report
   updateReport();
+}
+
+// ========== Generate Per-Step Confidence ==========
+function generateStepConfidence(mode) {
+  // Precision mode yields slightly higher confidence
+  var baseMin = mode === 'precision' ? 88 : 82;
+  var baseMax = mode === 'precision' ? 98 : 95;
+  return Math.round((baseMin + Math.random() * (baseMax - baseMin)) * 10) / 10;
+}
+
+// ========== Generate Overall Confidence ==========
+function generateConfidence(mode, stepConfidences) {
+  // Calculate weighted average of step confidences
+  var avg = stepConfidences.reduce(function(a, b) { return a + b; }, 0) / stepConfidences.length;
+
+  // Add a small mode-based boost for precision
+  if (mode === 'precision') {
+    avg = Math.min(avg + 1.5, 98);
+  }
+
+  return Math.round(avg * 10) / 10;
+}
+
+// ========== Display Confidence ==========
+function displayConfidence(confidence) {
+  var confidenceDisplay = document.getElementById('confidenceDisplay');
+  var confidenceValue = document.getElementById('confidenceValue');
+  var confidenceBarFill = document.getElementById('confidenceBarFill');
+
+  if (!confidenceDisplay || !confidenceValue || !confidenceBarFill) return;
+
+  // Determine confidence level
+  var level = 'low';
+  if (confidence > 80) level = 'high';
+  else if (confidence >= 50) level = 'medium';
+
+  // Show the display
+  confidenceDisplay.style.display = 'block';
+
+  // Update value text
+  confidenceValue.textContent = confidence + '%';
+  confidenceValue.className = 'confidence-value ' + level;
+
+  // Animate bar fill with delay for visual effect
+  requestAnimationFrame(function() {
+    requestAnimationFrame(function() {
+      confidenceBarFill.style.width = confidence + '%';
+      confidenceBarFill.className = 'confidence-bar-fill ' + level;
+    });
+  });
 }
 
 // ========== Result Generation ==========

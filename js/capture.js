@@ -305,6 +305,13 @@ function drawWaveform() {
   clarityEl.textContent = clarity + '%';
   clarityEl.style.color = clarity > 70 ? 'var(--success)' : clarity > 40 ? 'var(--warning)' : 'var(--danger)';
 
+  // Update noise level display
+  updateNoiseLevelDisplay();
+
+  // Update speech rate display (real mic: estimate from volume patterns)
+  var estimatedWpm = estimateSpeechRate(state.volumeHistory);
+  updateSpeechRateDisplay(estimatedWpm);
+
   // Update sample rate display with subtle visual pulse
   updateSampleRateDisplay(currentVolume);
 
@@ -366,9 +373,62 @@ function calculateClarity(history, currentVol, noiseFloor) {
   // Volume level factor (too quiet or too loud reduces clarity)
   const levelScore = currentVol > 0.05 && currentVol < 0.85 ? 1 : 0.5;
 
-  // Combined clarity
-  const clarity = (stability * 0.4 + snrScore * 0.35 + levelScore * 0.25) * 100;
+  // Speech rate factor: optimal rate is 150-200 WPM
+  var wpm = state.simulated ? state.simulatedSpeechRate : estimateSpeechRate(history);
+  var rateScore = calculateSpeechRateScore(wpm);
+
+  // Combined clarity (adjusted weights to include speech rate)
+  const clarity = (stability * 0.3 + snrScore * 0.25 + levelScore * 0.2 + rateScore * 0.25) * 100;
   return Math.min(100, Math.max(0, Math.round(clarity)));
+}
+
+/**
+ * Estimate speech rate (WPM) from volume history patterns
+ * Analyzes zero-crossings and envelope changes to estimate word rate
+ */
+function estimateSpeechRate(history) {
+  if (history.length < 10) return 180;
+
+  // Count significant volume transitions (syllable detection)
+  var transitions = 0;
+  var threshold = 0.05;
+  for (var i = 1; i < history.length; i++) {
+    if (Math.abs(history[i] - history[i - 1]) > threshold) {
+      transitions++;
+    }
+  }
+
+  // Estimate WPM: assume ~5 syllables per word, history spans ~1 second
+  // Each transition cluster represents a syllable
+  var syllablesPerSecond = transitions;
+  var estimatedWpm = Math.round(syllablesPerSecond * 12); // 60s / 5 syllables per word
+
+  // Clamp to realistic range
+  return Math.max(60, Math.min(300, estimatedWpm));
+}
+
+/**
+ * Calculate a speech rate quality score (0-1) based on WPM
+ * - Optimal: 150-200 WPM (score = 1.0)
+ * - Too fast (>250 WPM): score decreases
+ * - Too slow (<100 WPM): score decreases
+ */
+function calculateSpeechRateScore(wpm) {
+  if (wpm >= 150 && wpm <= 200) {
+    return 1.0; // Optimal range
+  } else if (wpm > 200 && wpm <= 250) {
+    // Gradual decline from 1.0 to 0.7
+    return 1.0 - ((wpm - 200) / 50) * 0.3;
+  } else if (wpm > 250) {
+    // Fast speech: score drops to 0.4
+    return Math.max(0.4, 0.7 - ((wpm - 250) / 100) * 0.3);
+  } else if (wpm >= 100 && wpm < 150) {
+    // Gradual decline from 0.7 to 1.0
+    return 0.7 + ((wpm - 100) / 50) * 0.3;
+  } else {
+    // Slow speech: score drops to 0.4
+    return Math.max(0.4, 0.4 + ((wpm - 50) / 50) * 0.3);
+  }
 }
 
 // ============================================================
@@ -424,8 +484,24 @@ function drawSimulatedWaveform() {
   const phonemePhase = Math.sin(time * 4.5) * 0.2 + 0.8;   // fast envelope
   const baseAmp = Math.max(0.05, syllablePhase * wordPhase * phonemePhase);
 
-  // Simulate noise floor
-  const noise = Math.sin(time * 13.7) * 0.01 + Math.sin(time * 7.3) * 0.008;
+  // Determine noise parameters based on current noise mode
+  var noiseFloor = getNoiseFloorForMode(state.noiseMode || 'quiet');
+  state.noiseFloor = noiseFloor;
+
+  // Base noise component
+  var noise = Math.sin(time * 13.7) * noiseFloor * 0.5 + Math.sin(time * 7.3) * noiseFloor * 0.4;
+
+  // Mode-specific noise additions
+  if (state.noiseMode === 'noisy') {
+    // Noisy environment: add random high-frequency interference
+    noise += (Math.random() - 0.5) * noiseFloor * 0.8;
+    noise += Math.sin(time * 23.5) * noiseFloor * 0.3;
+  } else if (state.noiseMode === 'loud') {
+    // Loud environment: add low-frequency sine waves (voice interference simulation)
+    noise += Math.sin(time * 3.2 + time * 0.7) * noiseFloor * 0.6;
+    noise += Math.sin(time * 2.5 + time * 1.1) * noiseFloor * 0.4;
+    noise += (Math.random() - 0.5) * noiseFloor * 0.5;
+  }
 
   // Clear background
   ctx.fillStyle = '#1a1a2e';
@@ -492,8 +568,11 @@ function drawSimulatedWaveform() {
   clarityEl.textContent = clarity + '%';
   clarityEl.style.color = clarity > 70 ? 'var(--success)' : clarity > 40 ? 'var(--warning)' : 'var(--danger)';
 
-  // Update sample rate display
-  updateSampleRateDisplay(currentVolume);
+  // Update noise level display
+  updateNoiseLevelDisplay();
+
+  // Update speech rate display (simulated)
+  updateSpeechRateDisplay(state.simulatedSpeechRate);
 
   // Update noise reduction display
   updateNoiseReductionDisplay(currentVolume);
@@ -636,6 +715,12 @@ function resetAudioParamsUI() {
   var clarityEl = document.getElementById('clarityScore');
   clarityEl.textContent = '--';
   clarityEl.style.color = '';
+  document.getElementById('noiseLevel').textContent = '--';
+  document.getElementById('noiseLevel').style.color = '';
+  document.getElementById('speechRate').textContent = '--';
+  document.getElementById('speechRate').style.color = '';
+  var barFill = document.getElementById('speechRateBarFill');
+  if (barFill) barFill.style.width = '0%';
 }
 
 /**
@@ -666,6 +751,112 @@ function updateNoiseReductionDisplay(currentVolume) {
   el.style.color = 'var(--success)';
 }
 
+/**
+ * Get the current noise floor based on the selected noise mode
+ */
+function getNoiseFloorForMode(mode) {
+  switch (mode) {
+    case 'quiet': return 0.01;
+    case 'noisy': return 0.05;
+    case 'loud':  return 0.12;
+    default:      return 0.01;
+  }
+}
+
+/**
+ * Get noise mode label for display
+ */
+function getNoiseModeLabel(mode) {
+  switch (mode) {
+    case 'quiet': return '\u5b89\u9759 (0.01)';
+    case 'noisy': return '\u5608\u6742 (0.05)';
+    case 'loud':  return '\u5f3a\u566a\u58f0 (0.12)';
+    default:      return '--';
+  }
+}
+
+/**
+ * Update the noise level display in the audio-params area
+ */
+function updateNoiseLevelDisplay() {
+  var el = document.getElementById('noiseLevel');
+  if (!el) return;
+  var mode = state.noiseMode || 'quiet';
+  var floor = getNoiseFloorForMode(mode);
+  el.textContent = getNoiseModeLabel(mode);
+  if (mode === 'quiet') {
+    el.style.color = 'var(--success)';
+  } else if (mode === 'noisy') {
+    el.style.color = 'var(--warning)';
+  } else {
+    el.style.color = 'var(--danger)';
+  }
+}
+
+/**
+ * Update the speech rate display and indicator bar
+ */
+function updateSpeechRateDisplay(wpm) {
+  var rateEl = document.getElementById('speechRate');
+  var barFill = document.getElementById('speechRateBarFill');
+  if (!rateEl || !barFill) return;
+
+  if (!wpm || wpm <= 0) {
+    rateEl.textContent = '--';
+    barFill.style.width = '0%';
+    return;
+  }
+
+  rateEl.textContent = Math.round(wpm) + ' WPM';
+
+  // Map WPM to a percentage for the bar (50-300 WPM range)
+  var pct = Math.min(100, Math.max(0, ((wpm - 50) / 250) * 100));
+  barFill.style.width = pct + '%';
+
+  // Color based on speech rate quality
+  if (wpm >= 150 && wpm <= 200) {
+    barFill.style.backgroundColor = 'var(--success)';
+    rateEl.style.color = 'var(--success)';
+  } else if ((wpm >= 100 && wpm < 150) || (wpm > 200 && wpm <= 250)) {
+    barFill.style.backgroundColor = 'var(--warning)';
+    rateEl.style.color = 'var(--warning)';
+  } else {
+    barFill.style.backgroundColor = 'var(--danger)';
+    rateEl.style.color = 'var(--danger)';
+  }
+}
+
+/**
+ * Initialize noise selector event listeners
+ */
+function initNoiseSelector() {
+  var radios = document.querySelectorAll('input[name="noiseMode"]');
+  var options = document.querySelectorAll('.noise-option');
+
+  radios.forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      // Update active class on options
+      options.forEach(function(opt) { opt.classList.remove('active'); });
+      var parent = radio.closest('.noise-option');
+      if (parent) parent.classList.add('active');
+
+      // Update state
+      state.noiseMode = radio.value;
+
+      // Update noise floor in state for simulated mode
+      if (state.simulated) {
+        state.noiseFloor = getNoiseFloorForMode(state.noiseMode);
+      }
+
+      // Update display
+      updateNoiseLevelDisplay();
+    });
+  });
+
+  // Initialize display on load
+  updateNoiseLevelDisplay();
+}
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
@@ -678,12 +869,20 @@ if (typeof state.mediaStream === 'undefined') state.mediaStream = null;
 if (typeof state.volumeHistory === 'undefined') state.volumeHistory = [];
 if (typeof state.peakVolumeValue === 'undefined') state.peakVolumeValue = 0;
 if (typeof state.noiseFloor === 'undefined') state.noiseFloor = 0.015;
+if (typeof state.noiseMode === 'undefined') state.noiseMode = 'quiet';
+if (typeof state.simulatedSpeechRate === 'undefined') state.simulatedSpeechRate = 180;
 
 // Initialize idle waveform after DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(initWaveform, 100);
+    setTimeout(function() {
+      initNoiseSelector();
+      initWaveform();
+    }, 100);
   });
 } else {
-  setTimeout(initWaveform, 100);
+  setTimeout(function() {
+    initNoiseSelector();
+    initWaveform();
+  }, 100);
 }

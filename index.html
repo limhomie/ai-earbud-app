@@ -115,6 +115,26 @@
   <div class="tab-panel" id="panel-capture">
     <div class="card">
       <div class="card-title">🎙️ 语音采集</div>
+      <div class="noise-selector" id="noiseSelector">
+        <div class="noise-selector-label">🔊 噪声环境</div>
+        <div class="noise-options">
+          <label class="noise-option active" id="noiseQuiet">
+            <input type="radio" name="noiseMode" value="quiet" checked>
+            <span class="noise-icon">🤫</span>
+            <span class="noise-text">安静环境</span>
+          </label>
+          <label class="noise-option" id="noiseNoisy">
+            <input type="radio" name="noiseMode" value="noisy">
+            <span class="noise-icon">🏢</span>
+            <span class="noise-text">嘈杂环境</span>
+          </label>
+          <label class="noise-option" id="noiseLoud">
+            <input type="radio" name="noiseMode" value="loud">
+            <span class="noise-icon">🚇</span>
+            <span class="noise-text">强噪声环境</span>
+          </label>
+        </div>
+      </div>
       <div class="waveform-container">
         <canvas id="waveformCanvas"></canvas>
       </div>
@@ -149,6 +169,17 @@
           <div class="param-label">清晰度</div>
           <div class="param-value" id="clarityScore">--</div>
         </div>
+        <div class="param-item">
+          <div class="param-label">环境噪声等级</div>
+          <div class="param-value" id="noiseLevel">--</div>
+        </div>
+        <div class="param-item">
+          <div class="param-label">语速</div>
+          <div class="param-value" id="speechRate">--</div>
+          <div class="speech-rate-bar" id="speechRateBar">
+            <div class="speech-rate-bar-fill" id="speechRateBarFill"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -169,15 +200,15 @@
       </div>
       <div class="pipeline" id="pipeline">
         <div class="pipeline-step" id="step-stt">
-          <div class="step-icon">🎤</div>
+          <div class="step-icon"><span class="step-icon-emoji">🎤</span><span class="step-checkmark">&#10003;</span></div>
           <div class="step-label">语音转写</div>
         </div>
         <div class="pipeline-step" id="step-translate">
-          <div class="step-icon">🌐</div>
+          <div class="step-icon"><span class="step-icon-emoji">🌐</span><span class="step-checkmark">&#10003;</span></div>
           <div class="step-label">实时翻译</div>
         </div>
         <div class="pipeline-step" id="step-summary">
-          <div class="step-icon">📝</div>
+          <div class="step-icon"><span class="step-icon-emoji">📝</span><span class="step-checkmark">&#10003;</span></div>
           <div class="step-label">摘要生成</div>
         </div>
       </div>
@@ -205,6 +236,20 @@
       <div class="scenario-selector">
         <button class="scenario-btn active" onclick="switchScenario('meeting')">📋 会议场景</button>
         <button class="scenario-btn" onclick="switchScenario('learning')">📚 学习场景</button>
+      </div>
+      <div class="confidence-display" id="confidenceDisplay" style="display: none;">
+        <div class="confidence-header">
+          <span>识别置信度</span>
+          <span class="confidence-value" id="confidenceValue">--%</span>
+        </div>
+        <div class="confidence-bar-large">
+          <div class="confidence-bar-fill" id="confidenceBarFill"></div>
+        </div>
+        <div class="confidence-levels">
+          <span>低</span>
+          <span>中</span>
+          <span>高</span>
+        </div>
       </div>
       <div class="result-tabs">
         <button class="result-tab active" onclick="switchResultTab('transcript')">转写文本</button>

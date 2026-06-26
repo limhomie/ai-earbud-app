@@ -89,3 +89,70 @@
 }
 .param-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
 .param-value { font-size: 14px; font-weight: 600; }
+
+/* ===== Noise Environment Selector ===== */
+.noise-selector {
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+.noise-selector-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+.noise-options {
+  display: flex;
+  gap: 8px;
+}
+.noise-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--border);
+  background: var(--bg-tertiary, rgba(255,255,255,0.03));
+  cursor: pointer;
+  transition: var(--transition);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.noise-option input[type="radio"] {
+  display: none;
+}
+.noise-option .noise-icon {
+  font-size: 16px;
+}
+.noise-option .noise-text {
+  white-space: nowrap;
+}
+.noise-option:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+}
+.noise-option.active {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+/* ===== Speech Rate Bar ===== */
+.speech-rate-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.speech-rate-bar-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 2px;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}

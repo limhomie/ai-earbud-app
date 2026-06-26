@@ -24,11 +24,39 @@
 .pipeline-step.active .step-icon {
   background: var(--accent);
   color: #000;
-  animation: pulse 1s infinite;
+  animation: pulse 1s infinite, glowPulse 1.5s ease-in-out infinite;
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.5);
+}
+.pipeline-step.active .step-icon-emoji {
+  animation: spin 2s linear infinite;
 }
 .pipeline-step.done .step-icon {
   background: var(--success);
   color: #000;
+  box-shadow: 0 0 8px rgba(0, 230, 118, 0.3);
+}
+.pipeline-step.done .step-icon-emoji {
+  display: none;
+}
+.pipeline-step.done .step-checkmark {
+  display: flex;
+}
+.pipeline-step .step-checkmark {
+  display: none;
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--success);
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-size: 20px;
+  font-weight: bold;
 }
 .step-icon {
   width: 44px;
@@ -108,3 +136,121 @@
 }
 .processing-text { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
 .processing-sub { font-size: 13px; color: var(--text-secondary); }
+
+/* ===== Keyframe Animations ===== */
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(0, 212, 255, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.7); }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes barPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== Confidence Display (Large bar in results) ===== */
+.confidence-display {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.confidence-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.confidence-value {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--accent);
+  transition: color 0.3s ease;
+}
+
+.confidence-value.high { color: var(--success); }
+.confidence-value.medium { color: #ffab00; }
+.confidence-value.low { color: #ff5252; }
+
+.confidence-bar-large {
+  height: 8px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.confidence-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+  width: 0%;
+  animation: barPulse 2s ease-in-out infinite;
+}
+
+.confidence-bar-fill.high {
+  background: linear-gradient(90deg, #00e676, #00c853);
+}
+
+.confidence-bar-fill.medium {
+  background: linear-gradient(90deg, #ffab00, #ff9100);
+}
+
+.confidence-bar-fill.low {
+  background: linear-gradient(90deg, #ff5252, #d32f2f);
+}
+
+.confidence-levels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-dim);
+  padding: 0 2px;
+}
+
+/* ===== Pipeline Step Enhanced Animations ===== */
+.pipeline-step.blink .step-icon {
+  animation: blink 0.3s ease-in-out 2;
+}
+
+.confidence-bar .confidence-fill {
+  animation: barPulse 2s ease-in-out infinite;
+}
+
+/* Processing step transition flash */
+@keyframes stepFlash {
+  0% { background: var(--accent); }
+  50% { background: rgba(0, 212, 255, 0.3); }
+  100% { background: var(--success); }
+}
+
+.pipeline-step.flash {
+  animation: stepFlash 0.4s ease-out;
+}
