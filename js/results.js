@@ -76,18 +76,23 @@ function generateResults() {
     transcriptEl.innerHTML = html;
   }
 
-  // Translation
+  // Translation - now editable for user correction
   const transEl = document.getElementById('translationContent');
   if (isEnglish) {
     transEl.innerHTML = `
       <div class="translation-row">
         <div class="translation-cell">
           <div class="lang-label">English (Original)</div>
-          <p style="font-size: 14px; line-height: 1.7;">${scenario.text}</p>
+          <p class="translation-text" contenteditable="false" data-original="${scenario.text}">${scenario.text}</p>
         </div>
         <div class="translation-cell">
-          <div class="lang-label">中文 (翻译)</div>
-          <p style="font-size: 14px; line-height: 1.7;">${scenario.translation}</p>
+          <div class="lang-label">
+            中文 (翻译)
+            <button class="edit-translation-btn" onclick="toggleEditTranslation(this)" title="点击编辑/锁定">✏️ 编辑</button>
+            <button class="reset-translation-btn" onclick="resetTranslation(this)" style="display:none;" title="恢复原文">🔄 恢复</button>
+          </div>
+          <p class="translation-text editable" contenteditable="false" data-original="${scenario.translation}">${scenario.translation}</p>
+          <div class="edit-hint" style="display:none;">✏️ 点击文本可直接修改翻译内容</div>
         </div>
       </div>
     `;
@@ -96,11 +101,16 @@ function generateResults() {
       <div class="translation-row">
         <div class="translation-cell">
           <div class="lang-label">中文 (原文)</div>
-          <p style="font-size: 14px; line-height: 1.7;">${scenario.text}</p>
+          <p class="translation-text" contenteditable="false" data-original="${scenario.text}">${scenario.text}</p>
         </div>
         <div class="translation-cell">
-          <div class="lang-label">English (Translation)</div>
-          <p style="font-size: 14px; line-height: 1.7;">Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.</p>
+          <div class="lang-label">
+            English (Translation)
+            <button class="edit-translation-btn" onclick="toggleEditTranslation(this)" title="点击编辑/锁定">✏️ 编辑</button>
+            <button class="reset-translation-btn" onclick="resetTranslation(this)" style="display:none;" title="恢复原文">🔄 恢复</button>
+          </div>
+          <p class="translation-text editable" contenteditable="false" data-original="Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.">Today we discussed Q1 product planning, focusing on the functional design of the new generation AI earbuds. Voice assistant response time needs to be optimized to within 200ms. Noise cancellation algorithms for meeting scenarios need upgrades, especially in multi-person dialogue environments. Translation function needs to support real-time mutual translation in at least 12 languages. Smart summary function needs to automatically identify key information and generate structured meeting minutes.</p>
+          <div class="edit-hint" style="display:none;">✏️ 点击文本可直接修改翻译内容</div>
         </div>
       </div>
     `;
@@ -121,6 +131,51 @@ function generateResults() {
   document.getElementById('actionBar').style.display = 'flex';
 }
 
+// ========== 翻译编辑功能 ==========
+
+/**
+ * 切换翻译文本的编辑状态
+ */
+function toggleEditTranslation(btnEl) {
+  const translationCell = btnEl.closest('.translation-cell');
+  const textEl = translationCell.querySelector('.translation-text.editable');
+  const hintEl = translationCell.querySelector('.edit-hint');
+  const resetBtn = translationCell.querySelector('.reset-translation-btn');
+  const isEditing = textEl.getAttribute('contenteditable') === 'true';
+
+  if (isEditing) {
+    // Lock: disable editing
+    textEl.setAttribute('contenteditable', 'false');
+    textEl.classList.remove('editing');
+    btnEl.innerHTML = '✏️ 编辑';
+    if (hintEl) hintEl.style.display = 'none';
+    if (resetBtn) resetBtn.style.display = 'none';
+    showToast('🔒 已锁定翻译内容', 'info');
+  } else {
+    // Enable editing
+    textEl.setAttribute('contenteditable', 'true');
+    textEl.classList.add('editing');
+    textEl.focus();
+    btnEl.innerHTML = '🔒 锁定';
+    if (hintEl) hintEl.style.display = 'block';
+    if (resetBtn) resetBtn.style.display = 'inline-block';
+    showToast('✏️ 已解锁，可直接修改翻译', 'info');
+  }
+}
+
+/**
+ * 恢复翻译文本为原始内容
+ */
+function resetTranslation(btnEl) {
+  const translationCell = btnEl.closest('.translation-cell');
+  const textEl = translationCell.querySelector('.translation-text.editable');
+  const original = textEl.getAttribute('data-original');
+  if (original) {
+    textEl.textContent = original;
+    showToast('🔄 已恢复为原始翻译', 'success');
+  }
+}
+
 // ========== 操作按钮 ==========
 
 // 复制文本到剪贴板
@@ -132,7 +187,12 @@ function copyText() {
 // 导出结果为文本文件
 function exportText() {
   const scenario = state.scenarios[state.currentScenario];
-  const content = `转写内容：\n${scenario.text}\n\n翻译：\n${scenario.translation}\n\n摘要：\n${scenario.summary.join('\n')}`;
+
+  // Use edited translation text from DOM if available
+  const translationEl = document.querySelector('#translationContent .translation-text.editable');
+  const translatedText = translationEl ? translationEl.textContent : scenario.translation;
+
+  const content = `转写内容：\n${scenario.text}\n\n翻译（用户编辑）：\n${translatedText}\n\n摘要：\n${scenario.summary.join('\n')}`;
   const blob = new Blob([content], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);

@@ -57,6 +57,71 @@
   color: var(--text-dim);
   margin-bottom: 8px;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ===== Translation Editable Text ===== */
+.translation-text {
+  font-size: 14px;
+  line-height: 1.7;
+  transition: background 0.2s ease;
+  border-radius: 4px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+.translation-text.editable {
+  cursor: text;
+  min-height: 60px;
+}
+.translation-text.editable:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+.translation-text.editing {
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px dashed var(--accent);
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+}
+.translation-text.editing:focus {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: var(--accent);
+}
+.edit-hint {
+  font-size: 11px;
+  color: var(--accent);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Edit/Reset Buttons */
+.edit-translation-btn,
+.reset-translation-btn {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary, rgba(255,255,255,0.03));
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition);
+  text-transform: none;
+}
+.edit-translation-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.reset-translation-btn:hover {
+  border-color: var(--warning);
+  background: var(--warning);
+  color: #000;
 }
 
 .summary-card {
