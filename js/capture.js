@@ -286,12 +286,14 @@ function drawWaveform() {
   // Draw volume meter below the canvas
   drawVolumeMeter(currentVolume);
 
-  // Update peak volume
+  // Update peak volume - display as positive value
   const volumeDb = currentVolume > 0.001 ? Math.round(-60 + currentVolume * 60) : -60;
   if (volumeDb > state.peakVolumeValue) {
     state.peakVolumeValue = volumeDb;
   }
-  document.getElementById('peakVolume').textContent = state.peakVolumeValue + ' dB';
+  // Display absolute value (e.g., -12dB shown as 12dB, 0dB shown as 0dB)
+  const displayDb = Math.abs(state.peakVolumeValue);
+  document.getElementById('peakVolume').textContent = displayDb + ' dB';
 
   // Calculate clarity score based on volume stability and SNR
   state.volumeHistory.push(currentVolume);
@@ -472,12 +474,13 @@ function drawSimulatedWaveform() {
   const currentVolume = Math.min(1, baseAmp * 2);
   drawVolumeMeter(currentVolume);
 
-  // Update peak volume
+  // Update peak volume - display as positive value
   const volumeDb = currentVolume > 0.001 ? Math.round(-60 + currentVolume * 60) : -60;
   if (volumeDb > state.peakVolumeValue) {
     state.peakVolumeValue = volumeDb;
   }
-  document.getElementById('peakVolume').textContent = state.peakVolumeValue + ' dB';
+  const displayDb = Math.abs(state.peakVolumeValue);
+  document.getElementById('peakVolume').textContent = displayDb + ' dB';
 
   // Clarity
   state.volumeHistory.push(currentVolume);
